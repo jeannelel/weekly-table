@@ -2,6 +2,7 @@ name: Build image
 on:
   push:
     branches: [main]
+    paths-ignore: ['deploy/**', 'README.md']
   workflow_dispatch:
 permissions:
   contents: read
