@@ -63,7 +63,7 @@ spec:
                     fsGroup: 1000
                   containers:
                     - name: weekly-table
-                      image: ghcr.io/jeannelel/weekly-table:sha-74496cc
+                      image: ghcr.io/jeannelel/weekly-table:sha-2c02cf6
                       ports:
                         - name: http
                           containerPort: 8080

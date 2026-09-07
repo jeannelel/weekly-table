@@ -262,7 +262,10 @@
   .copystatus.ok { color: var(--herb); }
   .copystatus.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; margin-right: 6px; vertical-align: -1px; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .reader { width: min(680px, calc(100vw - 32px)); }
+  .reader { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+  .xbtn { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--paper); display: grid; place-items: center; font-size: 22px; line-height: 1; z-index: 2; box-shadow: var(--shadow); }
+  .xbtn:hover { background: var(--paper-soft); border-color: var(--accent); color: var(--accent); }
+  dialog { position: relative; }
   .reader .form { gap: 10px; }
   .reader .site { margin-top: -4px; }
   .readertext { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.55; max-height: 60vh; overflow: auto; background: var(--paper-soft); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0; }
@@ -470,6 +473,7 @@
 </dialog>
 
 <dialog id="vdlg" class="reader">
+  <button type="button" class="xbtn" id="vX" aria-label="Close">&times;</button>
   <div class="form">
     <img class="hero" id="vImage" alt="" hidden>
     <h2 id="vTitle"></h2>
@@ -716,6 +720,9 @@
     vdlg.showModal();
   }
   $("#vClose").addEventListener("click", () => vdlg.close());
+  $("#vX").addEventListener("click", () => vdlg.close());
+  // Clicking outside a window (on the dimmed background) closes it. Escape works too.
+  for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 
   // ---------- meal form ----------
   const dlg = $("#dlg");
