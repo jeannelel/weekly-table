@@ -271,6 +271,13 @@
   .readertext ul, .readertext ol { margin: 0; padding-left: 22px; }
   .readertext li { margin: 3px 0; }
   .mealactions .copybtn, .recipe .actions .copybtn { color: var(--herb); }
+  .thumb { display: block; width: 100%; object-fit: cover; border-radius: 8px; background: var(--line); }
+  .meal .thumb { height: 74px; margin: -2px 0 2px; }
+  .recipe .thumb { height: 130px; margin: -4px 0 4px; }
+  .reader .hero { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; display: block; }
+  .mealtitle a, .mealtitle button { all: unset; cursor: pointer; font: inherit; color: inherit; }
+  .mealtitle a:hover, .mealtitle button:hover { text-decoration: underline; text-decoration-color: var(--accent); }
+  .mealtitle button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
   .setup code { background: var(--paper-soft); padding: 2px 6px; border-radius: 6px; }
 </style>
 </head>
@@ -397,6 +404,7 @@
       <label for="fCopy">Saved copy of the recipe</label>
       <textarea id="fCopy" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
       <div class="copyrow"><button type="button" class="btn small" id="fFetchBtn">Fetch from the link</button><span class="copystatus" id="fCopyStatus"></span></div>
+      <input type="hidden" id="fImage">
     </div>
     <p class="hint err" id="formErr" hidden></p>
     <div class="formfoot">
@@ -429,6 +437,7 @@
       <label for="rCopy">Saved copy of the recipe</label>
       <textarea id="rCopy" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
       <div class="copyrow"><button type="button" class="btn small" id="rFetchBtn">Fetch from the link</button><span class="copystatus" id="rCopyStatus"></span></div>
+      <input type="hidden" id="rImage">
     </div>
     <p class="hint err" id="rformErr" hidden></p>
     <div class="formfoot">
@@ -442,6 +451,7 @@
 
 <dialog id="vdlg" class="reader">
   <div class="form">
+    <img class="hero" id="vImage" alt="" hidden>
     <h2 id="vTitle"></h2>
     <span class="site" id="vSite"></span>
     <div class="readertext" id="vText"></div>
@@ -533,7 +543,13 @@
     const n = meals.length, cooked = meals.filter((m) => m.cooked).length;
     $("#counts").textContent = loadingWeek ? "" : n === 0 ? "Nothing planned yet" : `${n} meal${n === 1 ? "" : "s"} planned${cooked ? `, ${cooked} cooked` : ""}`;
   }
-  function copyFor(m) { if (!m.url) return null; const r = recipes.find((x) => x.id === recipeId(m.url)); return r && r.copyText ? r : null; }
+  function savedFor(m) { if (!m.url) return null; const r = recipes.find((x) => x.id === recipeId(m.url)); return r && (r.copyText || r.hasImage) ? r : null; }
+  const imgSrc = (r) => `/api/recipes/${encodeURIComponent(r.id)}/image?v=${encodeURIComponent(r.imageUrl.slice(-24))}`;
+  function titleHtml(text, saved, url) {
+    if (saved) return `<button type="button" data-view="${esc(saved.id)}">${esc(text)}</button>`;
+    if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+    return esc(text);
+  }
   function renderDays() {
     const todayIso = isoDate(new Date());
     const sorted = [...meals].sort((a, b) => (SLOT_ORDER[a.slot] ?? 9) - (SLOT_ORDER[b.slot] ?? 9) || (a.createdAt || 0) - (b.createdAt || 0));
@@ -555,16 +571,16 @@
   }
   function mealCard(m) {
     const site = m.url ? siteOf(m.url) : "";
-    const title = m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title)}</a>` : esc(m.title);
-    const copy = copyFor(m);
+    const copy = savedFor(m);
     return `<div class="meal${m.cooked ? " cooked" : ""}" data-id="${esc(m.id)}">
       <span class="slot ${esc(m.slot || "dinner")}">${SLOT_LABEL[m.slot] || "Dinner"}</span>
-      <h3 class="mealtitle">${title}</h3>
+      ${copy?.hasImage ? `<img class="thumb" src="${imgSrc(copy)}" alt="" loading="lazy" data-view="${esc(copy.id)}" style="cursor:pointer">` : ""}
+      <h3 class="mealtitle">${titleHtml(m.title, copy, m.url)}</h3>
       ${site ? `<span class="site"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg>${esc(site)}</span>` : ""}
       ${m.notes ? `<p class="note">${esc(m.notes)}</p>` : ""}
       <div class="mealactions">
         ${m.url ? `<a class="btn small open" href="${esc(m.url)}" target="_blank" rel="noopener">Open recipe ↗</a>` : ""}
-        ${copy ? `<button class="btn small copybtn" data-view="${esc(copy.id)}">Saved copy</button>` : ""}
+        ${copy ? `<button class="btn small copybtn" data-view="${esc(copy.id)}">View here</button>` : ""}
         <button class="btn small cookbtn${m.cooked ? " on" : ""}" data-cook="${esc(m.id)}">${m.cooked ? "✓ Cooked" : "Mark cooked"}</button>
         <button class="btn small" data-edit="${esc(m.id)}">Edit</button>
       </div>
@@ -578,13 +594,14 @@
     const wrap = $("#recipes");
     if (list.length === 0) { wrap.innerHTML = `<p class="boxempty">${q ? "No recipes match that search." : "Nothing saved yet. Press “Add to recipe box”, or plan a recipe on a day and it lands here too."}</p>`; return; }
     wrap.innerHTML = list.map((r) => `<div class="recipe" data-rid="${esc(r.id)}">
-      <h3 class="mealtitle">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</h3>
+      ${r.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" data-view="${esc(r.id)}" style="cursor:pointer">` : ""}
+      <h3 class="mealtitle">${titleHtml(r.title, (r.copyText || r.hasImage) ? r : null, r.url)}</h3>
       ${r.url ? `<span class="site">${esc(r.site || siteOf(r.url))}</span>` : ""}
       ${r.notes ? `<p class="note">${esc(r.notes)}</p>` : ""}
       <span class="meta">${r.timesPlanned ? `Planned ${r.timesPlanned} time${r.timesPlanned === 1 ? "" : "s"}` : "Not planned yet"}</span>
       <div class="actions">
         <button class="btn small primary" data-plan="${esc(r.id)}">Plan this week</button>
-        ${r.copyText ? `<button class="btn small copybtn" data-view="${esc(r.id)}">Saved copy</button>` : ""}
+        ${(r.copyText || r.hasImage) ? `<button class="btn small copybtn" data-view="${esc(r.id)}">View here</button>` : ""}
         ${r.url ? `<a class="btn small" href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>` : ""}
         <button class="btn small ghost" data-redit="${esc(r.id)}">Edit</button>
       </div>
@@ -592,7 +609,7 @@
   }
 
   // ---------- saved copies ----------
-  function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl }) {
+  function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl, imageEl }) {
     let timer = null, lastUrl = "";
     const st = (msg, cls = "") => { statusEl.textContent = msg; statusEl.className = "copystatus " + cls; };
     async function run(force = false) {
@@ -604,6 +621,8 @@
         const { recipe: r } = await call("POST", "/api/fetch-recipe", { url });
         if (normalizeUrl(urlEl.value) !== url) return;
         if (!r) { st("Couldn't read this website automatically. Paste the recipe in if you want a copy."); return; }
+        if (r.image) imageEl.value = r.image;
+        if (!r.text) { st(r.image ? "Saved the picture, but couldn't read the recipe text. Paste it in if you want a copy." : "Couldn't read this website automatically. Paste the recipe in if you want a copy."); return; }
         copyEl.value = r.text;
         if (r.title && (!titleEl.value.trim() || titleEl.value.trim() === titleFromUrl(url))) titleEl.value = r.title;
         st(r.structured ? `Saved a copy: ${r.ingredients} ingredients, ${r.steps} steps` : "Saved the page text. Tidy it up if you like.", "ok");
@@ -630,7 +649,8 @@
   }
   function openReader(r) {
     $("#vTitle").textContent = r.title; $("#vSite").textContent = r.site || siteOf(r.url) || "";
-    $("#vText").innerHTML = renderCopy(r.copyText);
+    const img = $("#vImage"); img.hidden = !r.hasImage; if (r.hasImage) img.src = imgSrc(r);
+    $("#vText").innerHTML = r.copyText ? renderCopy(r.copyText) : `<p style="margin:0;color:var(--ink-soft)">No saved text for this recipe yet. Press Edit, then "Fetch from the link", or paste the recipe in.</p>`;
     $("#vOpen").hidden = !r.url; if (r.url) $("#vOpen").href = r.url;
     vdlg.showModal();
   }
@@ -642,7 +662,7 @@
     const sel = $("#fDay"); sel.innerHTML = "";
     for (let i = 0; i < 7; i++) { const d = addDays(weekStart, i); const o = document.createElement("option"); o.value = i; o.textContent = `${DAY_NAMES[i]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`; sel.appendChild(o); }
   }
-  const fCopyCtl = wireCopyField({ urlEl: $("#fUrl"), titleEl: $("#fTitle"), copyEl: $("#fCopy"), statusEl: $("#fCopyStatus"), btnEl: $("#fFetchBtn") });
+  const fCopyCtl = wireCopyField({ urlEl: $("#fUrl"), titleEl: $("#fTitle"), copyEl: $("#fCopy"), statusEl: $("#fCopyStatus"), btnEl: $("#fFetchBtn"), imageEl: $("#fImage") });
   function openForm({ meal = null, dayIndex = null, recipe = null } = {}) {
     editing = meal;
     fillDayOptions();
@@ -655,8 +675,9 @@
     const srcUrl = meal?.url || recipe?.url || "";
     const boxCopy = srcUrl ? recipes.find((r) => r.id === recipeId(srcUrl)) : null;
     $("#fCopy").value = boxCopy?.copyText || recipe?.copyText || "";
+    $("#fImage").value = "";
     fCopyCtl.reset();
-    if (srcUrl && !$("#fCopy").value) setTimeout(() => $("#fFetchBtn").click(), 50);
+    if (srcUrl && (!$("#fCopy").value || !(boxCopy || recipe)?.hasImage)) setTimeout(() => $("#fFetchBtn").click(), 50);
     $("#deleteBtn").hidden = !meal;
     $("#formErr").hidden = true;
     $("#urlHint").textContent = $("#fUrl").value ? `From ${siteOf($("#fUrl").value)}` : "Leave empty if it's a recipe you know by heart.";
@@ -682,7 +703,7 @@
       if (url) {
         const rid = recipeId(url);
         const prev = recipes.find((r) => r.id === rid);
-        await store.setRecipe(rid, { title, url, site: data.site, notes: prev?.notes || "", copyText: $("#fCopy").value.trim() || prev?.copyText || "", addedAt: prev?.addedAt || Date.now(), lastPlanned: Date.now(), timesPlanned: (prev?.timesPlanned || 0) + (editing ? 0 : 1) });
+        await store.setRecipe(rid, { title, url, site: data.site, notes: prev?.notes || "", copyText: $("#fCopy").value.trim() || prev?.copyText || "", imageUrl: $("#fImage").value, addedAt: prev?.addedAt || Date.now(), lastPlanned: Date.now(), timesPlanned: (prev?.timesPlanned || 0) + (editing ? 0 : 1) });
       }
       await store.setMeal(editing?.id || newId(), data);
       dlg.close();
@@ -699,7 +720,7 @@
   // ---------- recipe box form ----------
   const rdlg = $("#rdlg");
   let editingRecipe = null;
-  const rCopyCtl = wireCopyField({ urlEl: $("#rUrl"), titleEl: $("#rTitle"), copyEl: $("#rCopy"), statusEl: $("#rCopyStatus"), btnEl: $("#rFetchBtn") });
+  const rCopyCtl = wireCopyField({ urlEl: $("#rUrl"), titleEl: $("#rTitle"), copyEl: $("#rCopy"), statusEl: $("#rCopyStatus"), btnEl: $("#rFetchBtn"), imageEl: $("#rImage") });
   function openRecipeForm(recipe = null) {
     editingRecipe = recipe;
     $("#rformTitle").textContent = recipe ? "Edit recipe" : "Add to recipe box";
@@ -707,8 +728,9 @@
     $("#rTitle").value = recipe?.title || "";
     $("#rNotes").value = recipe?.notes || "";
     $("#rCopy").value = recipe?.copyText || "";
+    $("#rImage").value = "";
     rCopyCtl.reset();
-    if (recipe?.url && !$("#rCopy").value) setTimeout(() => $("#rFetchBtn").click(), 50);
+    if (recipe?.url && (!$("#rCopy").value || !recipe.hasImage)) setTimeout(() => $("#rFetchBtn").click(), 50);
     $("#rDeleteBtn").hidden = !recipe;
     $("#rformErr").hidden = true;
     $("#rUrlHint").textContent = recipe?.url ? `From ${siteOf(recipe.url)}` : "Leave empty if it's a recipe you know by heart.";
@@ -733,7 +755,7 @@
     $("#rSaveBtn").disabled = true;
     try {
       if (editingRecipe && editingRecipe.id !== id) await call("DELETE", `/api/recipes/${editingRecipe.id}`);
-      await store.setRecipe(id, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
+      await store.setRecipe(id, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), imageUrl: $("#rImage").value, addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
       rdlg.close();
       toast(editingRecipe ? "Saved" : "Added to your recipe box");
     } catch (ex) { console.error(ex); err.textContent = ex.message; err.hidden = false; }
