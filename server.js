@@ -37,6 +37,9 @@ db.exec(`
 for (const col of ["image_url TEXT NOT NULL DEFAULT ''", "image_file TEXT NOT NULL DEFAULT ''", "shared INTEGER NOT NULL DEFAULT 1"]) {
   try { db.exec(`ALTER TABLE recipes ADD COLUMN ${col}`); } catch {}
 }
+db.exec(`CREATE TABLE IF NOT EXISTS api_tokens (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0)`);
 const IMG_DIR = path.join(DATA_DIR, "images");
 fs.mkdirSync(IMG_DIR, { recursive: true });
 
@@ -79,7 +82,14 @@ function clearSession(req, res) {
   if (t) db.prepare("DELETE FROM sessions WHERE token = ?").run(t);
   res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
 }
+const sha256 = (v) => crypto.createHash("sha256").update(v).digest("base64url");
 function currentUser(req) {
+  const auth = req.headers.authorization || "";
+  if (/^bearer\s+/i.test(auth)) {
+    const row = db.prepare("SELECT t.id AS token_id, u.id, u.email, u.name FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?").get(sha256(auth.replace(/^bearer\s+/i, "").trim()));
+    if (row) { db.prepare("UPDATE api_tokens SET last_used = ? WHERE id = ?").run(Date.now(), row.token_id); return { id: row.id, email: row.email, name: row.name }; }
+    return null;
+  }
   const t = parseCookies(req)[COOKIE]; if (!t) return null;
   const row = db.prepare("SELECT u.id, u.email, u.name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?").get(t, Date.now());
   return row || null;
@@ -310,6 +320,22 @@ async function api(req, res, url, user) {
     }
     if (m === "DELETE") { db.prepare("DELETE FROM recipes WHERE user_id = ? AND id = ?").run(user.id, id); removeImage(user.id, id); return json(res, 200, { ok: true }); }
   }
+  if (p === "/api/tokens" && m === "GET") {
+    if (!need()) return;
+    return json(res, 200, { tokens: db.prepare("SELECT id, name, created_at, last_used FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC").all(user.id).map((t) => ({ id: t.id, name: t.name, createdAt: t.created_at, lastUsed: t.last_used })) });
+  }
+  if (p === "/api/tokens" && m === "POST") {
+    if (!need()) return;
+    const b = await readBody(req);
+    const token = "wt_" + newId(24), id = newId(8);
+    db.prepare("INSERT INTO api_tokens (id, user_id, token_hash, name, created_at) VALUES (?, ?, ?, ?, ?)").run(id, user.id, sha256(token), clean(b.name, 80).trim() || "Claude", Date.now());
+    return json(res, 200, { id, token });
+  }
+  if ((mm = /^\/api\/tokens\/([^/]+)$/.exec(p)) && m === "DELETE") {
+    if (!need()) return;
+    db.prepare("DELETE FROM api_tokens WHERE user_id = ? AND id = ?").run(user.id, safeId(mm[1]) || "");
+    return json(res, 200, { ok: true });
+  }
   if (p === "/api/recipes/share-all" && m === "POST") {
     if (!need()) return;
     const b = await readBody(req);
@@ -386,12 +412,177 @@ function serveStatic(req, res, pathname) {
   });
 }
 
+// ---------- MCP server (so Claude and other assistants can use the planner) ----------
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+function mondayOf(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function resolveWeek(w) {
+  const now = new Date();
+  if (!w || w === "this") return mondayOf(now);
+  if (w === "next") return addDays(mondayOf(now), 7);
+  if (w === "last") return addDays(mondayOf(now), -7);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(w)); if (!m) throw new Error(`Unknown week "${w}". Use "this", "next", "last" or a date like 2026-09-14.`);
+  return mondayOf(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
+function resolveDay(day, weekStart) {
+  const s = String(day || "").trim().toLowerCase();
+  const i = DAYS.findIndex((d) => d.startsWith(s.slice(0, 3)));
+  if (s && i >= 0) return { weekStart, dayIndex: i };
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) { const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); const ws = mondayOf(d); return { weekStart: ws, dayIndex: Math.round((d - ws) / 864e5) }; }
+  if (s === "today") { const d = new Date(); const ws = mondayOf(d); return { weekStart: ws, dayIndex: Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - ws) / 864e5) }; }
+  if (s === "tomorrow") { const d = addDays(new Date(), 1); const ws = mondayOf(d); return { weekStart: ws, dayIndex: Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - ws) / 864e5) }; }
+  throw new Error(`Unknown day "${day}". Use a weekday name, "today", "tomorrow" or a date like 2026-09-14.`);
+}
+const siteOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+function recipeIdOf(url) { let h = 5381; const s = url.trim().toLowerCase(); for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return "r" + h.toString(16) + s.length.toString(16); }
+async function upsertRecipeFromUrl(userId, { url, title, notes, shared, planned }) {
+  const id = recipeIdOf(url);
+  const prev = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?").get(userId, id);
+  let read = null;
+  if (!prev || !prev.copy_text || !prev.image_file) read = await readRecipe(url).catch(() => null);
+  const finalTitle = (title || "").trim() || prev?.title || read?.title || url;
+  const copyText = prev?.copy_text || read?.text || "";
+  const imageUrl = prev?.image_url || read?.image || "";
+  let imageFile = prev?.image_file || "";
+  if (imageUrl && !imageFile) imageFile = await saveImage(userId, id, imageUrl);
+  db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file, shared)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, id) DO UPDATE SET title=excluded.title, notes=excluded.notes, copy_text=excluded.copy_text, last_planned=excluded.last_planned,
+    times_planned=excluded.times_planned, image_url=excluded.image_url, image_file=excluded.image_file, shared=excluded.shared`)
+    .run(userId, id, finalTitle, url, siteOf(url), notes ?? prev?.notes ?? "", copyText, prev?.added_at || Date.now(),
+      planned ? Date.now() : (prev?.last_planned || 0), (prev?.times_planned || 0) + (planned ? 1 : 0), imageUrl, imageFile,
+      shared === undefined ? (prev ? prev.shared : 1) : (shared ? 1 : 0));
+  return { id, title: finalTitle, copied: !!copyText, picture: !!imageFile };
+}
+const mealLine = (r) => `- [${r.id}] ${DAYS[r.day_index][0].toUpperCase() + DAYS[r.day_index].slice(1)} ${r.slot}: ${r.title}${r.cooked ? " (cooked)" : ""}${r.url ? ` <${r.url}>` : ""}${r.notes ? ` — ${r.notes}` : ""}`;
+const MCP_TOOLS = [
+  { name: "get_week", description: "Show the meal plan for a week: every planned meal with its day, meal slot (breakfast/lunch/dinner/snack), link, notes and whether it was cooked. Meal ids are needed for update_meal and remove_meal.",
+    inputSchema: { type: "object", properties: { week: { type: "string", description: '"this" (default), "next", "last", or any date in the week (YYYY-MM-DD)' } } } },
+  { name: "plan_meal", description: "Put a recipe on a day of the week. If a link is given, the recipe is also saved to the recipe box with a copy of its ingredients, method and picture.",
+    inputSchema: { type: "object", required: ["title", "day"], properties: {
+      title: { type: "string", description: "Name of the dish. If a link is given and this is empty, the name is read from the page." },
+      day: { type: "string", description: 'Weekday name ("tuesday"), "today", "tomorrow", or a date (YYYY-MM-DD)' },
+      week: { type: "string", description: 'Only when day is a weekday name: "this" (default), "next" or "last"' },
+      slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"], description: "Default dinner" },
+      url: { type: "string", description: "Link to the recipe on the web, if any" },
+      notes: { type: "string" } } } },
+  { name: "update_meal", description: "Change a planned meal: move it, rename it, add notes, or mark it cooked.",
+    inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" }, title: { type: "string" }, day: { type: "string" }, week: { type: "string" }, slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"] }, notes: { type: "string" }, cooked: { type: "boolean" } } } },
+  { name: "remove_meal", description: "Take a meal off the plan (the recipe stays in the recipe box).", inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" } } } },
+  { name: "search_recipes", description: "Search the user's recipe box, and optionally the recipes shared by other members. Returns ids for get_recipe.",
+    inputSchema: { type: "object", properties: { query: { type: "string", description: "Words to look for in names, sites, notes and ingredients. Empty lists everything." }, include_shared: { type: "boolean", description: "Also search recipes shared by other members (default true)" }, limit: { type: "number" } } } },
+  { name: "get_recipe", description: "Read a saved recipe in full: description, timings, ingredients and method.",
+    inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" }, owner_id: { type: "string", description: "Only for a recipe shared by another member (from search_recipes)" } } } },
+  { name: "save_recipe", description: "Save a recipe to the recipe box from a link, without planning it. The page is read and a copy of ingredients, method and picture is kept.",
+    inputSchema: { type: "object", required: ["url"], properties: { url: { type: "string" }, title: { type: "string" }, notes: { type: "string" }, shared: { type: "boolean", description: "Share with other members (default true)" } } } },
+  { name: "read_recipe_page", description: "Read a recipe web page and return its ingredients and method without saving anything.", inputSchema: { type: "object", required: ["url"], properties: { url: { type: "string" } } } },
+];
+async function mcpTool(user, name, a = {}) {
+  const uid = user.id;
+  switch (name) {
+    case "get_week": {
+      const ws = resolveWeek(a.week);
+      const rows = db.prepare("SELECT * FROM meals WHERE user_id = ? AND week = ? ORDER BY day_index, created_at").all(uid, isoOf(ws));
+      const head = `Week of ${ws.getDate()} ${MONTHS[ws.getMonth()]} – ${addDays(ws, 6).getDate()} ${MONTHS[addDays(ws, 6).getMonth()]} ${ws.getFullYear()} (Monday ${isoOf(ws)}; today is ${isoOf(new Date())})`;
+      if (!rows.length) return `${head}\nNothing planned yet.`;
+      const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+      rows.sort((x, y) => x.day_index - y.day_index || (order[x.slot] ?? 9) - (order[y.slot] ?? 9));
+      return `${head}\n${rows.map(mealLine).join("\n")}`;
+    }
+    case "plan_meal": {
+      const url = a.url ? String(a.url).trim() : "";
+      if (url && !/^https?:\/\//i.test(url)) throw new Error("The link must start with http:// or https://");
+      const { weekStart, dayIndex } = resolveDay(a.day, resolveWeek(a.week));
+      let title = (a.title || "").trim(), saved = null;
+      if (url) { saved = await upsertRecipeFromUrl(uid, { url, title, planned: true }); title = saved.title; }
+      if (!title) throw new Error("Give the meal a name.");
+      const id = "m" + Date.now().toString(36) + crypto.randomBytes(3).toString("hex");
+      db.prepare("INSERT INTO meals (user_id, id, title, url, site, week, day_index, slot, notes, cooked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)")
+        .run(uid, id, title, url, siteOf(url), isoOf(weekStart), dayIndex, ["breakfast", "lunch", "dinner", "snack"].includes(a.slot) ? a.slot : "dinner", clean(a.notes, 4000), Date.now());
+      return `Planned "${title}" for ${DAYS[dayIndex]} ${isoOf(addDays(weekStart, dayIndex))} (${a.slot || "dinner"}). Meal id ${id}.` + (saved ? ` Recipe box: ${saved.copied ? "ingredients and method saved" : "couldn't read the page, no copy saved"}${saved.picture ? ", picture saved" : ""} (recipe id ${saved.id}).` : "");
+    }
+    case "update_meal": {
+      const row = db.prepare("SELECT * FROM meals WHERE user_id = ? AND id = ?").get(uid, String(a.id || ""));
+      if (!row) throw new Error(`No meal with id ${a.id}. Use get_week to find ids.`);
+      let week = row.week, dayIndex = row.day_index;
+      if (a.day) { const r = resolveDay(a.day, resolveWeek(a.week || row.week)); week = isoOf(r.weekStart); dayIndex = r.dayIndex; }
+      db.prepare("UPDATE meals SET title = ?, week = ?, day_index = ?, slot = ?, notes = ?, cooked = ? WHERE user_id = ? AND id = ?")
+        .run((a.title || row.title).trim(), week, dayIndex, ["breakfast", "lunch", "dinner", "snack"].includes(a.slot) ? a.slot : row.slot, a.notes === undefined ? row.notes : clean(a.notes, 4000), a.cooked === undefined ? row.cooked : (a.cooked ? 1 : 0), uid, row.id);
+      return "Updated: " + mealLine(db.prepare("SELECT * FROM meals WHERE user_id = ? AND id = ?").get(uid, row.id));
+    }
+    case "remove_meal": {
+      const n = db.prepare("DELETE FROM meals WHERE user_id = ? AND id = ?").run(uid, String(a.id || "")).changes;
+      return n ? `Removed meal ${a.id} from the plan.` : `No meal with id ${a.id}.`;
+    }
+    case "search_recipes": {
+      const q = (a.query || "").trim().toLowerCase(), limit = Math.min(100, Math.max(1, Number(a.limit) || 30));
+      const match = (r) => !q || [r.title, r.site, r.notes, r.copy_text].some((v) => (v || "").toLowerCase().includes(q));
+      const mine = db.prepare("SELECT * FROM recipes WHERE user_id = ? ORDER BY last_planned DESC, added_at DESC").all(uid).filter(match).slice(0, limit);
+      let out = mine.length ? `Your recipe box:\n${mine.map((r) => `- [${r.id}] ${r.title}${r.site ? ` (${r.site})` : ""}${r.copy_text ? "" : " [no saved text]"}${r.shared ? "" : " [private]"}`).join("\n")}` : "Your recipe box: no matches.";
+      if (a.include_shared !== false) {
+        const others = db.prepare("SELECT r.*, u.name AS owner_name FROM recipes r JOIN users u ON u.id = r.user_id WHERE r.shared = 1 AND r.user_id != ? ORDER BY r.added_at DESC").all(uid).filter(match).slice(0, limit);
+        out += others.length ? `\n\nShared by other members:\n${others.map((r) => `- [${r.id}, owner ${r.user_id}] ${r.title}${r.site ? ` (${r.site})` : ""} — shared by ${r.owner_name || "a member"}`).join("\n")}` : "\n\nShared by other members: no matches.";
+      }
+      return out;
+    }
+    case "get_recipe": {
+      const owner = a.owner_id ? String(a.owner_id) : uid;
+      const r = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?" + (owner !== uid ? " AND shared = 1" : "")).get(owner, String(a.id || ""));
+      if (!r) throw new Error(`No recipe with id ${a.id}.`);
+      return `# ${r.title}\n${r.url ? `Source: ${r.url}\n` : ""}${r.notes ? `Notes: ${r.notes}\n` : ""}\n${r.copy_text || "(No saved text. Use read_recipe_page on the source link.)"}`;
+    }
+    case "save_recipe": {
+      const url = String(a.url || "").trim(); if (!/^https?:\/\//i.test(url)) throw new Error("The link must start with http:// or https://");
+      const saved = await upsertRecipeFromUrl(uid, { url, title: a.title, notes: a.notes, shared: a.shared });
+      return `Saved "${saved.title}" to the recipe box (id ${saved.id}). ${saved.copied ? "Ingredients and method saved" : "Couldn't read the page automatically, no text saved"}${saved.picture ? ", picture saved" : ""}.`;
+    }
+    case "read_recipe_page": {
+      const url = String(a.url || "").trim(); if (!/^https?:\/\//i.test(url)) throw new Error("The link must start with http:// or https://");
+      const r = await readRecipe(url);
+      if (!r || !r.text) return "Couldn't read a recipe from that page.";
+      return `# ${r.title || url}\n\n${r.text}`;
+    }
+    default: throw new Error(`Unknown tool ${name}`);
+  }
+}
+async function mcp(req, res, user) {
+  if (req.method === "GET") { res.writeHead(405, { "Allow": "POST" }); return res.end(); }
+  if (req.method === "DELETE") { res.writeHead(200); return res.end(); }
+  if (req.method !== "POST") { res.writeHead(405); return res.end(); }
+  if (!user) { res.writeHead(401, { "Content-Type": "application/json", "WWW-Authenticate": 'Bearer realm="weekly-table"' }); return res.end(JSON.stringify({ error: "A connection key is needed: Authorization: Bearer <key>. Create one on the website under Connect Claude." })); }
+  let msg; try { msg = await readBody(req); } catch { res.writeHead(400); return res.end(); }
+  const reply = (id, result) => json(res, 200, { jsonrpc: "2.0", id, result });
+  const fail = (id, code, message) => json(res, 200, { jsonrpc: "2.0", id, error: { code, message } });
+  if (msg.id === undefined) { res.writeHead(202); return res.end(); } // notifications
+  switch (msg.method) {
+    case "initialize": return reply(msg.id, { protocolVersion: msg.params?.protocolVersion || "2025-06-18", capabilities: { tools: { listChanged: false } }, serverInfo: { name: "the-weekly-table", version: "1.0.0" },
+      instructions: `The Weekly Table is ${user.name || user.email}'s weekly meal planner. Weeks run Monday to Sunday. Use get_week to see the plan, plan_meal to add a dish to a day (pass the recipe link when there is one so the recipe gets saved with its ingredients), and search_recipes/get_recipe to read saved recipes.` });
+    case "ping": return reply(msg.id, {});
+    case "tools/list": return reply(msg.id, { tools: MCP_TOOLS });
+    case "tools/call": {
+      const name = msg.params?.name, args = msg.params?.arguments || {};
+      if (!MCP_TOOLS.some((t) => t.name === name)) return fail(msg.id, -32602, `Unknown tool ${name}`);
+      try { const text = await mcpTool(user, name, args); return reply(msg.id, { content: [{ type: "text", text }] }); }
+      catch (e) { return reply(msg.id, { content: [{ type: "text", text: e.message }], isError: true }); }
+    }
+    default: return fail(msg.id, -32601, `Method not found: ${msg.method}`);
+  }
+}
+
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
   if (url.pathname === "/healthz") { res.writeHead(200, { "Content-Type": "text/plain" }); return res.end("ok"); }
+  if (url.pathname === "/mcp") {
+    try { await mcp(req, res, currentUser(req)); } catch (e) { console.error(e); if (!res.headersSent) json(res, 500, { error: "Something went wrong." }); }
+    return;
+  }
   if (url.pathname.startsWith("/api/")) {
     try { await api(req, res, url, currentUser(req)); }
     catch (e) { console.error(e); if (!res.headersSent) json(res, 500, { error: "Something went wrong. Please try again." }); }

@@ -70,6 +70,8 @@ spec:
                       env:
                         - name: DATA_DIR
                           value: /data
+                        - name: TZ
+                          value: Europe/Stockholm
                       volumeMounts:
                         - name: data
                           mountPath: /data

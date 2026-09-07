@@ -284,6 +284,12 @@
   .owner { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; }
   .check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
   .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .keys { display: flex; flex-direction: column; gap: 8px; }
+  .key { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+  .key .meta { flex: 1; font-size: 13px; color: var(--ink-soft); }
+  .key strong { color: var(--ink); }
+  .codebox { background: var(--ink); color: #F7F2F5; border-radius: 10px; padding: 12px 14px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .connect p { margin: 0; color: var(--ink-soft); max-width: 70ch; }
   .thumb { display: block; width: 100%; object-fit: cover; border-radius: 8px; background: var(--line); }
   .meal .thumb { height: 74px; margin: -2px 0 2px; }
   .recipe .thumb { height: 130px; margin: -4px 0 4px; }
@@ -392,6 +398,19 @@
     </div>
     <div class="recipes" id="shared"></div>
   </section>
+
+  <section class="box connect" aria-label="Connect Claude">
+    <div class="boxhead">
+      <div>
+        <h2>Use it from Claude</h2>
+        <p>Let Claude read your week, plan meals and save recipes for you, straight from a chat. Create a connection key, then paste the command it gives you into a terminal where Claude Code is installed.</p>
+      </div>
+      <div class="boxtools">
+        <button class="btn primary" id="newKeyBtn">Create a connection key</button>
+      </div>
+    </div>
+    <div class="keys" id="keys"></div>
+  </section>
   </div>
 </div>
 
@@ -489,6 +508,23 @@
       <button type="button" class="btn small ghost" id="vUntick" hidden>Untick all</button>
       <span class="spacer"></span>
       <button type="button" class="btn primary" id="vClose">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="kdlg">
+  <div class="form connect">
+    <h2>Your connection key</h2>
+    <p>Copy this now: for safety it is shown only once. If you lose it, create a new one.</p>
+    <div class="codebox" id="kKey"></div>
+    <p><strong>Connect Claude Code</strong> by running this in a terminal:</p>
+    <div class="codebox" id="kCmd"></div>
+    <p>Then ask Claude things like "what's for dinner this week?", "plan this recipe for Thursday: &lt;link&gt;" or "what do I need for tonight's dish?". Other apps that speak MCP can use the same address and key.</p>
+    <div class="formfoot">
+      <button type="button" class="btn small" id="kCopyKey">Copy key</button>
+      <button type="button" class="btn small" id="kCopyCmd">Copy command</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn primary" id="kClose">Done</button>
     </div>
   </div>
 </dialog>
@@ -678,6 +714,35 @@
     catch (e) { console.error(e); toast("Couldn't change sharing. Try again."); }
   });
   $("#sharedSearch").addEventListener("input", renderShared);
+
+  // ---------- connection keys (MCP) ----------
+  let keys = [];
+  async function loadKeys() {
+    try { keys = (await call("GET", "/api/tokens")).tokens; } catch (e) { console.error(e); keys = []; }
+    const wrap = $("#keys");
+    if (!keys.length) { wrap.innerHTML = `<p class="boxempty">No connection keys yet.</p>`; return; }
+    const when = (t) => t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "never";
+    wrap.innerHTML = keys.map((k) => `<div class="key"><span class="meta"><strong>${esc(k.name)}</strong> · created ${when(k.createdAt)} · last used ${when(k.lastUsed)}</span><button class="btn small ghost" data-delkey="${esc(k.id)}">Remove</button></div>`).join("");
+  }
+  const kdlg = $("#kdlg");
+  $("#newKeyBtn").addEventListener("click", async () => {
+    const name = prompt("Give this key a name, for example the computer it will be used on:", "Claude Code");
+    if (name === null) return;
+    try {
+      const d = await call("POST", "/api/tokens", { name });
+      const cmd = `claude mcp add --transport http weekly-table ${location.origin}/mcp --header "Authorization: Bearer ${d.token}"`;
+      $("#kKey").textContent = d.token; $("#kCmd").textContent = cmd;
+      $("#kCopyKey").onclick = () => navigator.clipboard.writeText(d.token).then(() => toast("Key copied"));
+      $("#kCopyCmd").onclick = () => navigator.clipboard.writeText(cmd).then(() => toast("Command copied"));
+      kdlg.showModal(); loadKeys();
+    } catch (e) { console.error(e); toast(e.message); }
+  });
+  $("#kClose").addEventListener("click", () => kdlg.close());
+  document.addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-delkey]"); if (!t) return;
+    if (!confirm("Remove this connection key? Anything using it will stop working.")) return;
+    try { await call("DELETE", `/api/tokens/${t.dataset.delkey}`); loadKeys(); toast("Key removed"); } catch (ex) { console.error(ex); toast(ex.message); }
+  });
 
   // ---------- saved copies ----------
   function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl, imageEl }) {
@@ -915,7 +980,7 @@
     $("#who").innerHTML = `Signed in as <strong>${esc(u.name || u.email)}</strong>`;
     setStatus(true, "Saved online");
     weekStart = mondayOf(new Date()); meals = []; recipes = []; loadingWeek = true;
-    render(); loadRecipes(); loadWeek(); loadShared();
+    render(); loadRecipes(); loadWeek(); loadShared(); loadKeys();
   }
   function showSignedOut() {
     $("#auth").hidden = false; $("#app").hidden = true; $("#addBtn").hidden = true; $("#signOutBtn").hidden = true; $("#who").hidden = true;
