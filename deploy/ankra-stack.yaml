@@ -1,0 +1,138 @@
+# The Weekly Table on Ankra. Apply with:
+#   ankra cluster apply -f deploy/ankra-stack.yaml --cluster playground-small-81ffe8 --wait
+# Only the "weekly-table" stack is written; other stacks on the cluster are left alone.
+apiVersion: v1
+kind: ImportCluster
+metadata:
+  name: playground-small-81ffe8
+spec:
+  stacks:
+    - name: weekly-table
+      description: The Weekly Table, a weekly meal planner with its own accounts and recipe box.
+      manifests:
+        - name: weekly-table-namespace
+          parents: []
+          manifest: |
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: weekly-table
+        - name: weekly-table-storage
+          parents:
+            - kind: manifest
+              name: weekly-table-namespace
+          manifest: |
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: weekly-table-data
+              namespace: weekly-table
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: local-path
+              resources:
+                requests:
+                  storage: 1Gi
+        - name: weekly-table-app
+          parents:
+            - kind: manifest
+              name: weekly-table-storage
+          manifest: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: weekly-table
+              namespace: weekly-table
+              labels:
+                app: weekly-table
+            spec:
+              replicas: 1
+              strategy:
+                type: Recreate
+              selector:
+                matchLabels:
+                  app: weekly-table
+              template:
+                metadata:
+                  labels:
+                    app: weekly-table
+                spec:
+                  securityContext:
+                    runAsUser: 1000
+                    runAsGroup: 1000
+                    fsGroup: 1000
+                  containers:
+                    - name: weekly-table
+                      image: ghcr.io/jeannelel/weekly-table:IMAGE_TAG
+                      ports:
+                        - name: http
+                          containerPort: 8080
+                      env:
+                        - name: DATA_DIR
+                          value: /data
+                      volumeMounts:
+                        - name: data
+                          mountPath: /data
+                      readinessProbe:
+                        httpGet:
+                          path: /healthz
+                          port: http
+                      livenessProbe:
+                        httpGet:
+                          path: /healthz
+                          port: http
+                        initialDelaySeconds: 10
+                      resources:
+                        requests:
+                          cpu: 50m
+                          memory: 64Mi
+                        limits:
+                          cpu: 500m
+                          memory: 256Mi
+                  volumes:
+                    - name: data
+                      persistentVolumeClaim:
+                        claimName: weekly-table-data
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: weekly-table
+              namespace: weekly-table
+            spec:
+              selector:
+                app: weekly-table
+              ports:
+                - name: http
+                  port: 80
+                  targetPort: http
+        - name: weekly-table-web
+          parents:
+            - kind: manifest
+              name: weekly-table-app
+          manifest: |
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: weekly-table
+              namespace: weekly-table
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt-prod
+                nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+            spec:
+              ingressClassName: nginx
+              tls:
+                - hosts:
+                    - weeklytable.s5dtr9wnpc.80g6ytsqgo.ankra.cc
+                  secretName: weekly-table-tls
+              rules:
+                - host: weeklytable.s5dtr9wnpc.80g6ytsqgo.ankra.cc
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: weekly-table
+                            port:
+                              name: http
