@@ -34,7 +34,7 @@ db.exec(`
     added_at INTEGER NOT NULL, last_planned INTEGER NOT NULL DEFAULT 0, times_planned INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, id));
 `);
-for (const col of ["image_url TEXT NOT NULL DEFAULT ''", "image_file TEXT NOT NULL DEFAULT ''"]) {
+for (const col of ["image_url TEXT NOT NULL DEFAULT ''", "image_file TEXT NOT NULL DEFAULT ''", "shared INTEGER NOT NULL DEFAULT 1"]) {
   try { db.exec(`ALTER TABLE recipes ADD COLUMN ${col}`); } catch {}
 }
 const IMG_DIR = path.join(DATA_DIR, "images");
@@ -298,15 +298,55 @@ async function api(req, res, url, user) {
       const imageUrl = /^https?:\/\//.test(b.imageUrl || "") ? clean(b.imageUrl, 2000) : prev.image_url;
       let imageFile = prev.image_file;
       if (imageUrl && (imageUrl !== prev.image_url || !imageFile)) imageFile = (await saveImage(user.id, id, imageUrl)) || imageFile;
-      db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      const prevShared = db.prepare("SELECT shared FROM recipes WHERE user_id = ? AND id = ?").get(user.id, id);
+      const shared = "shared" in b ? (b.shared ? 1 : 0) : (prevShared ? prevShared.shared : 1);
+      db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file, shared)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, id) DO UPDATE SET title=excluded.title, url=excluded.url, site=excluded.site, notes=excluded.notes,
-        copy_text=excluded.copy_text, last_planned=excluded.last_planned, times_planned=excluded.times_planned, image_url=excluded.image_url, image_file=excluded.image_file`)
+        copy_text=excluded.copy_text, last_planned=excluded.last_planned, times_planned=excluded.times_planned, image_url=excluded.image_url, image_file=excluded.image_file, shared=excluded.shared`)
         .run(user.id, id, title, clean(b.url, 2000), clean(b.site, 200), clean(b.notes, 4000), clean(b.copyText, 60000),
-          Number(b.addedAt) || Date.now(), Number(b.lastPlanned) || 0, Number(b.timesPlanned) || 0, imageUrl, imageFile);
+          Number(b.addedAt) || Date.now(), Number(b.lastPlanned) || 0, Number(b.timesPlanned) || 0, imageUrl, imageFile, shared);
       return json(res, 200, { ok: true, hasImage: !!imageFile });
     }
     if (m === "DELETE") { db.prepare("DELETE FROM recipes WHERE user_id = ? AND id = ?").run(user.id, id); removeImage(user.id, id); return json(res, 200, { ok: true }); }
+  }
+  if (p === "/api/recipes/share-all" && m === "POST") {
+    if (!need()) return;
+    const b = await readBody(req);
+    db.prepare("UPDATE recipes SET shared = ? WHERE user_id = ?").run(b.shared ? 1 : 0, user.id);
+    return json(res, 200, { ok: true });
+  }
+  if (p === "/api/shared" && m === "GET") {
+    if (!need()) return;
+    const rows = db.prepare(`SELECT r.*, u.name AS owner_name, u.email AS owner_email FROM recipes r JOIN users u ON u.id = r.user_id
+      WHERE r.shared = 1 ORDER BY r.added_at DESC LIMIT 500`).all();
+    return json(res, 200, { recipes: rows.map((r) => ({ ...recipeOut(r), ownerId: r.user_id, ownerName: r.owner_name || r.owner_email.split("@")[0], mine: r.user_id === user.id })) });
+  }
+  if ((mm = /^\/api\/shared\/([^/]+)\/([^/]+)\/(image|copy)$/.exec(p))) {
+    if (!need()) return;
+    const ownerId = safeId(mm[1]), id = safeId(mm[2]); if (!ownerId || !id) return json(res, 400, { error: "Bad id." });
+    const row = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ? AND shared = 1").get(ownerId, id);
+    if (!row) return json(res, 404, { error: "That recipe isn't shared any more." });
+    if (mm[3] === "image" && m === "GET") {
+      const full = row.image_file ? path.join(IMG_DIR, ownerId, row.image_file) : "";
+      if (!full || !fs.existsSync(full)) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { "Content-Type": MIME["." + path.extname(full).slice(1)] || "image/jpeg", "Cache-Control": "private, max-age=86400" });
+      return fs.createReadStream(full).pipe(res);
+    }
+    if (mm[3] === "copy" && m === "POST") {
+      // Copy the recipe, text and picture included, into the current user's own box.
+      const mine = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?").get(user.id, id);
+      let imageFile = mine?.image_file || "";
+      if (row.image_file && !imageFile) {
+        try { const dir = path.join(IMG_DIR, user.id); fs.mkdirSync(dir, { recursive: true }); fs.copyFileSync(path.join(IMG_DIR, ownerId, row.image_file), path.join(dir, row.image_file)); imageFile = row.image_file; } catch {}
+      }
+      db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file, shared)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(user_id, id) DO UPDATE SET copy_text = CASE WHEN excluded.copy_text != '' THEN excluded.copy_text ELSE recipes.copy_text END,
+        image_url = CASE WHEN recipes.image_file = '' THEN excluded.image_url ELSE recipes.image_url END, image_file = CASE WHEN recipes.image_file = '' THEN excluded.image_file ELSE recipes.image_file END`)
+        .run(user.id, id, row.title, row.url, row.site, "", row.copy_text, Date.now(), 0, 0, row.image_url, imageFile);
+      return json(res, 200, { recipe: recipeOut(db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?").get(user.id, id)) });
+    }
   }
   if ((mm = /^\/api\/recipes\/([^/]+)\/image$/.exec(p)) && m === "GET") {
     if (!need()) return;
@@ -330,7 +370,7 @@ async function api(req, res, url, user) {
   json(res, 404, { error: "Not found." });
 }
 const mealOut = (r) => ({ id: r.id, title: r.title, url: r.url, site: r.site, week: r.week, dayIndex: r.day_index, slot: r.slot, notes: r.notes, cooked: !!r.cooked, createdAt: r.created_at });
-const recipeOut = (r) => ({ id: r.id, title: r.title, url: r.url, site: r.site, notes: r.notes, copyText: r.copy_text, addedAt: r.added_at, lastPlanned: r.last_planned, timesPlanned: r.times_planned, imageUrl: r.image_url || "", hasImage: !!r.image_file });
+const recipeOut = (r) => ({ id: r.id, title: r.title, url: r.url, site: r.site, notes: r.notes, copyText: r.copy_text, addedAt: r.added_at, lastPlanned: r.last_planned, timesPlanned: r.times_planned, imageUrl: r.image_url || "", hasImage: !!r.image_file, shared: !!r.shared });
 
 // ---------- static ----------
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif", ".avif": "image/avif", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json" };

@@ -271,6 +271,11 @@
   .readertext ul, .readertext ol { margin: 0; padding-left: 22px; }
   .readertext li { margin: 3px 0; }
   .mealactions .copybtn, .recipe .actions .copybtn { color: var(--herb); }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--herb); }
+  .badge.off { color: var(--ink-faint); }
+  .owner { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; }
+  .check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
   .thumb { display: block; width: 100%; object-fit: cover; border-radius: 8px; background: var(--line); }
   .meal .thumb { height: 74px; margin: -2px 0 2px; }
   .recipe .thumb { height: 130px; margin: -4px 0 4px; }
@@ -357,6 +362,7 @@
       </div>
       <div class="boxtools">
         <input class="search" id="search" type="search" placeholder="Search your recipes&hellip;" aria-label="Search recipes">
+        <button class="btn" id="shareAllBtn" title="Share or unshare every recipe in your box">Share all</button>
         <button class="btn primary" id="addRecipeBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           Add to recipe box
@@ -364,6 +370,19 @@
       </div>
     </div>
     <div class="recipes" id="recipes"></div>
+  </section>
+
+  <section class="box" aria-label="Shared recipes">
+    <div class="boxhead">
+      <div>
+        <h2>Everyone's recipes</h2>
+        <p>Recipes shared by the other members. Plan one straight away, or add it to your own box.</p>
+      </div>
+      <div class="boxtools">
+        <input class="search" id="sharedSearch" type="search" placeholder="Search shared recipes&hellip;" aria-label="Search shared recipes">
+      </div>
+    </div>
+    <div class="recipes" id="shared"></div>
   </section>
   </div>
 </div>
@@ -439,6 +458,7 @@
       <div class="copyrow"><button type="button" class="btn small" id="rFetchBtn">Fetch from the link</button><span class="copystatus" id="rCopyStatus"></span></div>
       <input type="hidden" id="rImage">
     </div>
+    <label class="check"><input type="checkbox" id="rShared" checked> Share this recipe with everyone</label>
     <p class="hint err" id="rformErr" hidden></p>
     <div class="formfoot">
       <button type="button" class="btn danger small" id="rDeleteBtn" hidden>Remove from recipe box</button>
@@ -512,14 +532,14 @@
     setMeal: (id, data) => call("PUT", `/api/meals/${id}`, data).then(loadWeek),
     patchMeal: (id, patch) => call("PATCH", `/api/meals/${id}`, patch).then(loadWeek),
     deleteMeal: (id) => call("DELETE", `/api/meals/${id}`).then(loadWeek),
-    setRecipe: (id, data) => call("PUT", `/api/recipes/${id}`, data).then(loadRecipes),
-    deleteRecipe: (id) => call("DELETE", `/api/recipes/${id}`).then(loadRecipes),
+    setRecipe: (id, data) => call("PUT", `/api/recipes/${id}`, data).then(loadRecipes).then(loadShared),
+    deleteRecipe: (id) => call("DELETE", `/api/recipes/${id}`).then(loadRecipes).then(loadShared),
   };
 
   // ---------- state ----------
   let user = null;
   let weekStart = mondayOf(new Date());
-  let meals = [], recipes = [];
+  let meals = [], recipes = [], shared = [];
   let editing = null, loadingWeek = true;
   async function loadWeek() {
     const wk = isoDate(weekStart);
@@ -531,10 +551,14 @@
     try { const d = await call("GET", "/api/recipes"); recipes = d.recipes; } catch (e) { console.error(e); }
     renderRecipes(); renderDays();
   }
+  async function loadShared() {
+    try { const d = await call("GET", "/api/shared"); shared = d.recipes.filter((r) => !r.mine); } catch (e) { console.error(e); }
+    renderShared();
+  }
   function setStatus(live, text) { const s = $("#status"); s.classList.toggle("live", live); s.querySelector("span:last-child").textContent = text; }
 
   // ---------- rendering ----------
-  function render() { renderWeekBar(); renderDays(); renderRecipes(); }
+  function render() { renderWeekBar(); renderDays(); renderRecipes(); renderShared(); }
   function renderWeekBar() {
     const diff = Math.round((weekStart - mondayOf(new Date())) / 864e5 / 7);
     $("#weekLabel").textContent = diff === 0 ? "This week" : diff === 1 ? "Next week" : diff === -1 ? "Last week" : "Week of";
@@ -544,7 +568,7 @@
     $("#counts").textContent = loadingWeek ? "" : n === 0 ? "Nothing planned yet" : `${n} meal${n === 1 ? "" : "s"} planned${cooked ? `, ${cooked} cooked` : ""}`;
   }
   function savedFor(m) { if (!m.url) return null; const r = recipes.find((x) => x.id === recipeId(m.url)); return r && (r.copyText || r.hasImage) ? r : null; }
-  const imgSrc = (r) => `/api/recipes/${encodeURIComponent(r.id)}/image?v=${encodeURIComponent(r.imageUrl.slice(-24))}`;
+  const imgSrc = (r) => (r.ownerId ? `/api/shared/${encodeURIComponent(r.ownerId)}/${encodeURIComponent(r.id)}/image` : `/api/recipes/${encodeURIComponent(r.id)}/image`) + `?v=${encodeURIComponent((r.imageUrl || "").slice(-24))}`;
   function titleHtml(text, saved, url) {
     if (saved) return `<button type="button" data-view="${esc(saved.id)}">${esc(text)}</button>`;
     if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
@@ -592,13 +616,14 @@
       .filter((r) => !q || (r.title || "").toLowerCase().includes(q) || (r.site || "").toLowerCase().includes(q) || (r.notes || "").toLowerCase().includes(q) || (r.copyText || "").toLowerCase().includes(q))
       .sort((a, b) => (b.lastPlanned || b.addedAt || 0) - (a.lastPlanned || a.addedAt || 0));
     const wrap = $("#recipes");
-    if (list.length === 0) { wrap.innerHTML = `<p class="boxempty">${q ? "No recipes match that search." : "Nothing saved yet. Press “Add to recipe box”, or plan a recipe on a day and it lands here too."}</p>`; return; }
+    if (list.length === 0) { updateShareAllBtn(); wrap.innerHTML = `<p class="boxempty">${q ? "No recipes match that search." : "Nothing saved yet. Press “Add to recipe box”, or plan a recipe on a day and it lands here too."}</p>`; return; }
+    updateShareAllBtn();
     wrap.innerHTML = list.map((r) => `<div class="recipe" data-rid="${esc(r.id)}">
       ${r.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" data-view="${esc(r.id)}" style="cursor:pointer">` : ""}
       <h3 class="mealtitle">${titleHtml(r.title, (r.copyText || r.hasImage) ? r : null, r.url)}</h3>
       ${r.url ? `<span class="site">${esc(r.site || siteOf(r.url))}</span>` : ""}
       ${r.notes ? `<p class="note">${esc(r.notes)}</p>` : ""}
-      <span class="meta">${r.timesPlanned ? `Planned ${r.timesPlanned} time${r.timesPlanned === 1 ? "" : "s"}` : "Not planned yet"}</span>
+      <span class="meta">${r.timesPlanned ? `Planned ${r.timesPlanned} time${r.timesPlanned === 1 ? "" : "s"}` : "Not planned yet"} · <span class="badge${r.shared ? "" : " off"}">${r.shared ? "Shared" : "Private"}</span></span>
       <div class="actions">
         <button class="btn small primary" data-plan="${esc(r.id)}">Plan this week</button>
         ${(r.copyText || r.hasImage) ? `<button class="btn small copybtn" data-view="${esc(r.id)}">View here</button>` : ""}
@@ -607,6 +632,42 @@
       </div>
     </div>`).join("");
   }
+
+  function renderShared() {
+    const q = ($("#sharedSearch").value || "").trim().toLowerCase();
+    const list = shared.filter((r) => !q || [r.title, r.site, r.notes, r.copyText, r.ownerName].some((v) => (v || "").toLowerCase().includes(q)));
+    const wrap = $("#shared");
+    if (list.length === 0) { wrap.innerHTML = `<p class="boxempty">${q ? "No shared recipes match that search." : "Nothing shared by other members yet. Anything they add with sharing on will appear here."}</p>`; return; }
+    wrap.innerHTML = list.map((r) => `<div class="recipe" data-sid="${esc(r.ownerId)}/${esc(r.id)}">
+      ${r.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" data-sview="${esc(r.ownerId)}/${esc(r.id)}" style="cursor:pointer">` : ""}
+      <h3 class="mealtitle">${(r.copyText || r.hasImage) ? `<button type="button" data-sview="${esc(r.ownerId)}/${esc(r.id)}">${esc(r.title)}</button>` : r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</h3>
+      ${r.url ? `<span class="site">${esc(r.site || siteOf(r.url))}</span>` : ""}
+      <span class="owner">Shared by ${esc(r.ownerName)}</span>
+      <div class="actions">
+        <button class="btn small primary" data-splan="${esc(r.ownerId)}/${esc(r.id)}">Plan this week</button>
+        <button class="btn small" data-scopy="${esc(r.ownerId)}/${esc(r.id)}">Add to my box</button>
+        ${r.url ? `<a class="btn small ghost" href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>` : ""}
+      </div>
+    </div>`).join("");
+  }
+  function findShared(key) { const [o, id] = key.split("/"); return shared.find((r) => r.ownerId === o && r.id === id); }
+  async function copyShared(r) {
+    const d = await call("POST", `/api/shared/${encodeURIComponent(r.ownerId)}/${encodeURIComponent(r.id)}/copy`);
+    await loadRecipes();
+    return d.recipe;
+  }
+  function updateShareAllBtn() {
+    const allShared = recipes.length > 0 && recipes.every((r) => r.shared);
+    $("#shareAllBtn").textContent = allShared ? "Stop sharing all" : "Share all";
+    $("#shareAllBtn").dataset.next = allShared ? "0" : "1";
+  }
+  $("#shareAllBtn").addEventListener("click", async () => {
+    const next = $("#shareAllBtn").dataset.next === "1";
+    if (!next && !confirm("Stop sharing every recipe in your box? Other members will no longer see them.")) return;
+    try { await call("POST", "/api/recipes/share-all", { shared: next }); await loadRecipes(); await loadShared(); toast(next ? "All your recipes are shared" : "Your recipes are private now"); }
+    catch (e) { console.error(e); toast("Couldn't change sharing. Try again."); }
+  });
+  $("#sharedSearch").addEventListener("input", renderShared);
 
   // ---------- saved copies ----------
   function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl, imageEl }) {
@@ -729,6 +790,7 @@
     $("#rNotes").value = recipe?.notes || "";
     $("#rCopy").value = recipe?.copyText || "";
     $("#rImage").value = "";
+    $("#rShared").checked = recipe ? !!recipe.shared : true;
     rCopyCtl.reset();
     if (recipe?.url && (!$("#rCopy").value || !recipe.hasImage)) setTimeout(() => $("#rFetchBtn").click(), 50);
     $("#rDeleteBtn").hidden = !recipe;
@@ -755,7 +817,7 @@
     $("#rSaveBtn").disabled = true;
     try {
       if (editingRecipe && editingRecipe.id !== id) await call("DELETE", `/api/recipes/${editingRecipe.id}`);
-      await store.setRecipe(id, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), imageUrl: $("#rImage").value, addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
+      await store.setRecipe(id, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), imageUrl: $("#rImage").value, shared: $("#rShared").checked, addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
       rdlg.close();
       toast(editingRecipe ? "Saved" : "Added to your recipe box");
     } catch (ex) { console.error(ex); err.textContent = ex.message; err.hidden = false; }
@@ -776,7 +838,7 @@
   $("#todayBtn").addEventListener("click", () => { weekStart = mondayOf(new Date()); loadingWeek = true; render(); loadWeek(); });
   $("#search").addEventListener("input", renderRecipes);
   document.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-add],[data-edit],[data-cook],[data-plan],[data-redit],[data-view]");
+    const t = e.target.closest("[data-add],[data-edit],[data-cook],[data-plan],[data-redit],[data-view],[data-sview],[data-splan],[data-scopy]");
     if (!t) return;
     if (t.dataset.add !== undefined) return openForm({ dayIndex: Number(t.dataset.add) });
     if (t.dataset.edit) return openForm({ meal: meals.find((m) => m.id === t.dataset.edit) });
@@ -788,6 +850,9 @@
     if (t.dataset.plan) return openForm({ recipe: recipes.find((r) => r.id === t.dataset.plan) });
     if (t.dataset.redit) return openRecipeForm(recipes.find((r) => r.id === t.dataset.redit));
     if (t.dataset.view) { const r = recipes.find((x) => x.id === t.dataset.view); if (r) openReader(r); return; }
+    if (t.dataset.sview) { const r = findShared(t.dataset.sview); if (r) openReader(r); return; }
+    if (t.dataset.scopy) { const r = findShared(t.dataset.scopy); if (!r) return; try { await copyShared(r); toast("Added to your recipe box"); } catch (ex) { console.error(ex); toast(ex.message); } return; }
+    if (t.dataset.splan) { const r = findShared(t.dataset.splan); if (!r) return; try { const mine = await copyShared(r); openForm({ recipe: mine }); } catch (ex) { console.error(ex); toast(ex.message); } return; }
   });
 
   // ---------- sign in / sign up ----------
@@ -796,7 +861,7 @@
     mode = m;
     $("#nameField").hidden = m !== "signup";
     $("#authTitle").textContent = m === "signup" ? "Create your account" : "Welcome to your table";
-    $("#authIntro").textContent = m === "signup" ? "Free, and your plans stay private to you." : "Sign in to see your weekly plan and recipe box from any device.";
+    $("#authIntro").textContent = m === "signup" ? "Free. Your weekly plan is private; recipes are shared with the other members unless you say otherwise." : "Sign in to see your weekly plan and recipe box from any device.";
     $("#authSubmit").textContent = m === "signup" ? "Create account" : "Sign in";
     $("#switchRow").innerHTML = m === "signup" ? `Already have an account? <button type="button" id="toSignIn">Sign in</button>` : `New here? <button type="button" id="toSignUp">Create an account</button>`;
     $("#aPass").autocomplete = m === "signup" ? "new-password" : "current-password";
@@ -821,7 +886,7 @@
     $("#who").innerHTML = `Signed in as <strong>${esc(u.name || u.email)}</strong>`;
     setStatus(true, "Saved online");
     weekStart = mondayOf(new Date()); meals = []; recipes = []; loadingWeek = true;
-    render(); loadRecipes(); loadWeek();
+    render(); loadRecipes(); loadWeek(); loadShared();
   }
   function showSignedOut() {
     $("#auth").hidden = false; $("#app").hidden = true; $("#addBtn").hidden = true; $("#signOutBtn").hidden = true; $("#who").hidden = true;
