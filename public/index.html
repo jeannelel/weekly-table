@@ -273,6 +273,11 @@
   .readertext h4:first-child { margin-top: 0; }
   .readertext ul, .readertext ol { margin: 0; padding-left: 22px; }
   .readertext li { margin: 3px 0; }
+  .readertext ul.ings { list-style: none; padding-left: 0; }
+  .ing { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 8px; }
+  .ing:hover { background: var(--paper); }
+  .ing input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--herb); cursor: pointer; }
+  .ing.done span { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--ink-faint); }
   .mealactions .copybtn, .recipe .actions .copybtn { color: var(--herb); }
   .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--herb); }
   .badge.off { color: var(--ink-faint); }
@@ -481,6 +486,7 @@
     <div class="readertext" id="vText"></div>
     <div class="formfoot">
       <a class="btn small" id="vOpen" href="#" target="_blank" rel="noopener">Open original ↗</a>
+      <button type="button" class="btn small ghost" id="vUntick" hidden>Untick all</button>
       <span class="spacer"></span>
       <button type="button" class="btn primary" id="vClose">Close</button>
     </div>
@@ -700,23 +706,39 @@
   }
   const vdlg = $("#vdlg");
   function renderCopy(text) {
-    const lines = String(text || "").split("\n"); let html = "", list = null;
+    const lines = String(text || "").split("\n"); let html = "", list = null, ing = 0;
     const close = () => { if (list) { html += `</${list}>`; list = null; } };
     for (const raw of lines) {
       const l = raw.trim();
       if (!l) { close(); continue; }
       if (/^(INGREDIENTS|METHOD|[A-Z][A-Z \-&]{3,})$/.test(l)) { close(); html += `<h4>${esc(l.charAt(0) + l.slice(1).toLowerCase())}</h4>`; continue; }
-      if (/^[-*•]\s+/.test(l)) { if (list !== "ul") { close(); html += "<ul>"; list = "ul"; } html += `<li>${esc(l.replace(/^[-*•]\s+/, ""))}</li>`; continue; }
+      if (/^[-*•]\s+/.test(l)) { if (list !== "ul") { close(); html += `<ul class="ings">`; list = "ul"; } html += `<li><label class="ing"><input type="checkbox" data-ing="${ing++}"><span>${esc(l.replace(/^[-*•]\s+/, ""))}</span></label></li>`; continue; }
       if (/^\d+[.)]\s+/.test(l)) { if (list !== "ol") { close(); html += "<ol>"; list = "ol"; } html += `<li>${esc(l.replace(/^\d+[.)]\s+/, ""))}</li>`; continue; }
       close(); html += `<p style="margin:0 0 6px">${esc(l)}</p>`;
     }
     close(); return html;
   }
+  let tickKey = "";
+  function loadTicks() { try { return JSON.parse(localStorage.getItem(tickKey) || "[]"); } catch { return []; } }
+  function saveTicks(t) { try { if (t.length) localStorage.setItem(tickKey, JSON.stringify(t)); else localStorage.removeItem(tickKey); } catch {} }
+  function applyTicks() {
+    const ticked = new Set(loadTicks());
+    for (const box of $("#vText").querySelectorAll("input[data-ing]")) { box.checked = ticked.has(Number(box.dataset.ing)); box.closest(".ing").classList.toggle("done", box.checked); }
+    $("#vUntick").hidden = ticked.size === 0;
+  }
+  $("#vText").addEventListener("change", (e) => {
+    const box = e.target.closest("input[data-ing]"); if (!box) return;
+    const t = new Set(loadTicks()); box.checked ? t.add(Number(box.dataset.ing)) : t.delete(Number(box.dataset.ing));
+    saveTicks([...t]); applyTicks();
+  });
+  $("#vUntick").addEventListener("click", () => { saveTicks([]); applyTicks(); });
   function openReader(r) {
+    tickKey = `wt-ticks:${r.ownerId || "me"}:${r.id}`;
     $("#vTitle").textContent = r.title; $("#vSite").textContent = r.site || siteOf(r.url) || "";
     const img = $("#vImage"); img.hidden = !r.hasImage; if (r.hasImage) img.src = imgSrc(r);
     $("#vText").innerHTML = r.copyText ? renderCopy(r.copyText) : `<p style="margin:0;color:var(--ink-soft)">No saved text for this recipe yet. Press Edit, then "Fetch from the link", or paste the recipe in.</p>`;
     $("#vOpen").hidden = !r.url; if (r.url) $("#vOpen").href = r.url;
+    applyTicks();
     vdlg.showModal();
   }
   $("#vClose").addEventListener("click", () => vdlg.close());
