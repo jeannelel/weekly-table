@@ -1,10 +1,10 @@
 # The Weekly Table on Ankra. Apply with:
-#   ankra cluster apply -f deploy/ankra-stack.yaml --cluster playground-small-81ffe8 --wait
+#   ankra cluster apply -f deploy/ankra-stack.yaml --cluster playground-0f7706 --wait
 # Only the "weekly-table" stack is written; other stacks on the cluster are left alone.
 apiVersion: v1
 kind: ImportCluster
 metadata:
-  name: playground-small-81ffe8
+  name: playground-0f7706
 spec:
   stacks:
     - name: weekly-table
@@ -63,7 +63,7 @@ spec:
                     fsGroup: 1000
                   containers:
                     - name: weekly-table
-                      image: ghcr.io/jeannelel/weekly-table:sha-088dcaa
+                      image: ghcr.io/jeannelel/weekly-table:sha-7024864
                       ports:
                         - name: http
                           containerPort: 8080
@@ -120,15 +120,14 @@ spec:
               namespace: weekly-table
               annotations:
                 cert-manager.io/cluster-issuer: letsencrypt-prod
-                nginx.ingress.kubernetes.io/proxy-body-size: "2m"
             spec:
-              ingressClassName: nginx
+              ingressClassName: traefik
               tls:
                 - hosts:
-                    - weeklytable.s5dtr9wnpc.80g6ytsqgo.ankra.cc
+                    - weeklytable.os2xcx7sfc.80g6ytsqgo.ankra.cc
                   secretName: weekly-table-tls
               rules:
-                - host: weeklytable.s5dtr9wnpc.80g6ytsqgo.ankra.cc
+                - host: weeklytable.os2xcx7sfc.80g6ytsqgo.ankra.cc
                   http:
                     paths:
                       - path: /
