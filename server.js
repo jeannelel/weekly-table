@@ -40,6 +40,14 @@ for (const col of ["image_url TEXT NOT NULL DEFAULT ''", "image_file TEXT NOT NU
 db.exec(`CREATE TABLE IF NOT EXISTS api_tokens (
   id TEXT PRIMARY KEY, user_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0)`);
+// Kids: the family list lives on the user (JSON [{id, name}]). A rating belongs to a dish, not to one
+// planned meal, so it shows up every time the dish comes round again. kid_id "_" means "the kids"
+// together, used until names are added.
+try { db.exec("ALTER TABLE users ADD COLUMN kids TEXT NOT NULL DEFAULT '[]'"); } catch {}
+db.exec(`CREATE TABLE IF NOT EXISTS ratings (
+  user_id TEXT NOT NULL, dish_key TEXT NOT NULL, kid_id TEXT NOT NULL, rating INTEGER NOT NULL,
+  title TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, dish_key, kid_id))`);
+const SLOTS = ["breakfast", "lunch", "dinner", "snack"];
 const IMG_DIR = path.join(DATA_DIR, "images");
 fs.mkdirSync(IMG_DIR, { recursive: true });
 
@@ -83,17 +91,24 @@ function clearSession(req, res) {
   res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
 }
 const sha256 = (v) => crypto.createHash("sha256").update(v).digest("base64url");
+function parseKids(v) {
+  try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a.filter((k) => k && safeId(k.id) && k.name).map((k) => ({ id: k.id, name: String(k.name) })) : []; } catch { return []; }
+}
+const userOut = (row) => row ? { id: row.id, email: row.email, name: row.name, kids: parseKids(row.kids) } : null;
 function currentUser(req) {
   const auth = req.headers.authorization || "";
   if (/^bearer\s+/i.test(auth)) {
-    const row = db.prepare("SELECT t.id AS token_id, u.id, u.email, u.name FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?").get(sha256(auth.replace(/^bearer\s+/i, "").trim()));
-    if (row) { db.prepare("UPDATE api_tokens SET last_used = ? WHERE id = ?").run(Date.now(), row.token_id); return { id: row.id, email: row.email, name: row.name }; }
+    const row = db.prepare("SELECT t.id AS token_id, u.id, u.email, u.name, u.kids FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?").get(sha256(auth.replace(/^bearer\s+/i, "").trim()));
+    if (row) { db.prepare("UPDATE api_tokens SET last_used = ? WHERE id = ?").run(Date.now(), row.token_id); return userOut(row); }
     return null;
   }
   const t = parseCookies(req)[COOKIE]; if (!t) return null;
-  const row = db.prepare("SELECT u.id, u.email, u.name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?").get(t, Date.now());
-  return row || null;
+  const row = db.prepare("SELECT u.id, u.email, u.name, u.kids FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?").get(t, Date.now());
+  return userOut(row);
 }
+// The same dish key is computed in the browser (index.html): the recipe id for a link, else the tidied name.
+const normTitle = (t) => String(t || "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+const dishKeyOf = (url, title) => (url ? recipeIdOf(url) : "t:" + normTitle(title));
 setInterval(() => db.prepare("DELETE FROM sessions WHERE expires_at < ?").run(Date.now()), 3600e3).unref();
 
 // Gentle brake on password guessing: per email, 10 tries per 15 minutes.
@@ -212,9 +227,10 @@ function tidyPageText(t) {
     const soon = lines.slice(i + 1, i + 6).filter((l) => l.trim());
     if (soon.length && soon.filter(isItem).length >= 2 && !isItem(lines[i])) { start = i; break; }
   }
-  if (start < 0) start = lines.findIndex((l, i) => /ingredients/i.test(l) && lines.slice(i + 1, i + 6).some(isItem));
-  if (start > 0) lines = lines.slice(Math.max(0, start - 2));
-  else if (!/ingredients/i.test(t)) return "";
+  // A looser match, but never a menu link ("* Ingredients") and never a long sentence.
+  if (start < 0) start = lines.findIndex((l, i) => !isItem(l) && l.trim().length < 60 && /ingredients/i.test(l) && lines.slice(i + 1, i + 6).some(isItem));
+  if (start < 0) return "";
+  lines = lines.slice(Math.max(0, start - 2));
   let out = lines.join("\n").replace(/\n{3,}/g, "\n\n").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
   if (out.length > 8000) out = out.slice(0, 8000) + "\n\n[cut short]";
   return out;
@@ -228,7 +244,8 @@ async function readRecipe(url) {
   if (viaReader && viaReader.length > 800) { const r = extractRecipe(viaReader); if (r) return r; html = html || viaReader; }
   // 3. Fall back to readable page text.
   const md = await fetchText(`https://r.jina.ai/${url}`, { headers: { "Accept": "text/plain" } }, 15000);
-  if (md) { const t = tidyPageText(md); if (t) return { title: "", text: t, image: ogImage(html), structured: false }; }
+  // The reader says so when the page itself is missing (404 and friends): don't save its menus as a recipe.
+  if (md && !/^Warning: Target URL returned error [45]\d\d/m.test(md.slice(0, 1500))) { const t = tidyPageText(md); if (t) return { title: "", text: t, image: ogImage(html), structured: false }; }
   if (html) { const img = ogImage(html); if (img) return { title: "", text: "", image: img, structured: false }; }
   return null;
 }
@@ -249,16 +266,16 @@ async function api(req, res, url, user) {
     const id = newId(12);
     db.prepare("INSERT INTO users (id, email, name, pass_hash, created_at) VALUES (?, ?, ?, ?, ?)").run(id, email, name, hashPassword(password), Date.now());
     setSession(res, id);
-    return json(res, 200, { user: { id, email, name } });
+    return json(res, 200, { user: { id, email, name, kids: [] } });
   }
   if (p === "/api/login" && m === "POST") {
     const b = await readBody(req);
     const email = clean(b.email, 200).trim().toLowerCase(), password = String(b.password || "");
     if (tooManyTries(email)) return json(res, 429, { error: "Too many tries. Wait a few minutes and try again." });
-    const u = db.prepare("SELECT id, email, name, pass_hash FROM users WHERE email = ?").get(email);
+    const u = db.prepare("SELECT id, email, name, kids, pass_hash FROM users WHERE email = ?").get(email);
     if (!u || !verifyPassword(password, u.pass_hash)) return json(res, 401, { error: "Email or password is wrong. Try again." });
     setSession(res, u.id);
-    return json(res, 200, { user: { id: u.id, email: u.email, name: u.name } });
+    return json(res, 200, { user: userOut(u) });
   }
   if (p === "/api/logout" && m === "POST") { clearSession(req, res); return json(res, 200, { ok: true }); }
 
@@ -289,9 +306,47 @@ async function api(req, res, url, user) {
     if (m === "PATCH") {
       const b = await readBody(req);
       if ("cooked" in b) db.prepare("UPDATE meals SET cooked = ? WHERE user_id = ? AND id = ?").run(b.cooked ? 1 : 0, user.id, id);
+      if ("dayIndex" in b) db.prepare("UPDATE meals SET day_index = ? WHERE user_id = ? AND id = ?").run(Math.min(6, Math.max(0, Number(b.dayIndex) || 0)), user.id, id);
+      if ("slot" in b && SLOTS.includes(b.slot)) db.prepare("UPDATE meals SET slot = ? WHERE user_id = ? AND id = ?").run(b.slot, user.id, id);
       return json(res, 200, { ok: true });
     }
     if (m === "DELETE") { db.prepare("DELETE FROM meals WHERE user_id = ? AND id = ?").run(user.id, id); return json(res, 200, { ok: true }); }
+  }
+
+  if (p === "/api/family" && m === "PUT") {
+    if (!need()) return;
+    const b = await readBody(req);
+    const seen = new Set();
+    const kids = (Array.isArray(b.kids) ? b.kids : []).slice(0, 12)
+      .map((k) => ({ id: safeId(k && k.id) && k.id !== "_" ? k.id : "k" + newId(6), name: clean(k && k.name, 40).trim() }))
+      .filter((k) => k.name && !seen.has(k.id) && seen.add(k.id));
+    const before = user.kids;
+    db.prepare("UPDATE users SET kids = ? WHERE id = ?").run(JSON.stringify(kids), user.id);
+    // Ratings made for "the kids" before any names were added carry over to the first child.
+    if (!before.length && kids.length) db.prepare("UPDATE OR IGNORE ratings SET kid_id = ? WHERE user_id = ? AND kid_id = '_'").run(kids[0].id, user.id);
+    const keep = new Set(kids.map((k) => k.id));
+    for (const k of before) if (!keep.has(k.id)) db.prepare("DELETE FROM ratings WHERE user_id = ? AND kid_id = ?").run(user.id, k.id);
+    return json(res, 200, { kids });
+  }
+  if (p === "/api/ratings" && m === "GET") {
+    if (!need()) return;
+    const rows = db.prepare("SELECT dish_key, kid_id, rating, updated_at FROM ratings WHERE user_id = ?").all(user.id);
+    return json(res, 200, { ratings: rows.map((r) => ({ dishKey: r.dish_key, kidId: r.kid_id, rating: r.rating, updatedAt: r.updated_at })) });
+  }
+  if (p === "/api/ratings" && m === "PUT") {
+    if (!need()) return;
+    const b = await readBody(req);
+    const key = clean(b.dishKey, 200).trim(); if (!key) return json(res, 400, { error: "Which dish?" });
+    const kidId = String(b.kidId || "");
+    if (!(kidId === "_" && !user.kids.length) && !user.kids.some((k) => k.id === kidId)) return json(res, 400, { error: "That child isn't in your family list." });
+    if (b.rating === null || b.rating === undefined) db.prepare("DELETE FROM ratings WHERE user_id = ? AND dish_key = ? AND kid_id = ?").run(user.id, key, kidId);
+    else {
+      const rating = Number(b.rating); if (![1, 0, -1].includes(rating)) return json(res, 400, { error: "Bad rating." });
+      db.prepare(`INSERT INTO ratings (user_id, dish_key, kid_id, rating, title, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, dish_key, kid_id) DO UPDATE SET rating = excluded.rating, title = excluded.title, updated_at = excluded.updated_at`)
+        .run(user.id, key, kidId, rating, clean(b.title, 200), Date.now());
+    }
+    return json(res, 200, { ok: true });
   }
 
   if (p === "/api/recipes" && m === "GET") {
@@ -458,7 +513,15 @@ async function upsertRecipeFromUrl(userId, { url, title, notes, shared, planned 
       shared === undefined ? (prev ? prev.shared : 1) : (shared ? 1 : 0));
   return { id, title: finalTitle, copied: !!copyText, picture: !!imageFile };
 }
-const mealLine = (r) => `- [${r.id}] ${DAYS[r.day_index][0].toUpperCase() + DAYS[r.day_index].slice(1)} ${r.slot}: ${r.title}${r.cooked ? " (cooked)" : ""}${r.url ? ` <${r.url}>` : ""}${r.notes ? ` — ${r.notes}` : ""}`;
+const mealLine = (r, extra = "") => `- [${r.id}] ${DAYS[r.day_index][0].toUpperCase() + DAYS[r.day_index].slice(1)} ${r.slot}: ${r.title}${r.cooked ? " (cooked)" : ""}${r.url ? ` <${r.url}>` : ""}${r.notes ? ` — ${r.notes}` : ""}${extra}`;
+const RATING_WORD = { 1: "loves it", 0: "it's OK", "-1": "not a fan" };
+function ratingText(uid, kids, key) {
+  const rows = db.prepare("SELECT kid_id, rating FROM ratings WHERE user_id = ? AND dish_key = ?").all(uid, key);
+  if (!rows.length) return "";
+  const raters = kids.length ? kids : [{ id: "_", name: "the kids" }];
+  const parts = raters.map((k) => { const r = rows.find((x) => x.kid_id === k.id); return r ? `${k.name}: ${RATING_WORD[r.rating]}` : ""; }).filter(Boolean);
+  return parts.length ? ` [kids: ${parts.join(", ")}]` : "";
+}
 const MCP_TOOLS = [
   { name: "get_week", description: "Show the meal plan for a week: every planned meal with its day, meal slot (breakfast/lunch/dinner/snack), link, notes and whether it was cooked. Meal ids are needed for update_meal and remove_meal.",
     inputSchema: { type: "object", properties: { week: { type: "string", description: '"this" (default), "next", "last", or any date in the week (YYYY-MM-DD)' } } } },
@@ -479,6 +542,11 @@ const MCP_TOOLS = [
     inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" }, owner_id: { type: "string", description: "Only for a recipe shared by another member (from search_recipes)" } } } },
   { name: "save_recipe", description: "Save a recipe to the recipe box from a link, without planning it. The page is read and a copy of ingredients, method and picture is kept.",
     inputSchema: { type: "object", required: ["url"], properties: { url: { type: "string" }, title: { type: "string" }, notes: { type: "string" }, shared: { type: "boolean", description: "Share with other members (default true)" } } } },
+  { name: "rate_dish", description: "Record whether a child liked a dish: \"loves it\", \"it's ok\" or \"not a fan\" (or \"clear\" to remove the rating). The rating belongs to the dish, so it shows every time the dish is planned again. Point at the dish with a meal id from get_week, or a recipe id from search_recipes.",
+    inputSchema: { type: "object", required: ["rating"], properties: {
+      meal_id: { type: "string" }, recipe_id: { type: "string" }, owner_id: { type: "string", description: "Only for a recipe shared by another member" },
+      kid: { type: "string", description: "The child's name as set up in the planner. Leave out when no names are set up, or when there is only one child." },
+      rating: { type: "string", enum: ["loves it", "it's ok", "not a fan", "clear"] } } } },
   { name: "read_recipe_page", description: "Read a recipe web page and return its ingredients and method without saving anything.", inputSchema: { type: "object", required: ["url"], properties: { url: { type: "string" } } } },
 ];
 async function mcpTool(user, name, a = {}) {
@@ -491,7 +559,7 @@ async function mcpTool(user, name, a = {}) {
       if (!rows.length) return `${head}\nNothing planned yet.`;
       const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
       rows.sort((x, y) => x.day_index - y.day_index || (order[x.slot] ?? 9) - (order[y.slot] ?? 9));
-      return `${head}\n${rows.map(mealLine).join("\n")}`;
+      return `${head}\n${rows.map((r) => mealLine(r, ratingText(uid, user.kids, dishKeyOf(r.url, r.title)))).join("\n")}`;
     }
     case "plan_meal": {
       const url = a.url ? String(a.url).trim() : "";
@@ -522,10 +590,10 @@ async function mcpTool(user, name, a = {}) {
       const q = (a.query || "").trim().toLowerCase(), limit = Math.min(100, Math.max(1, Number(a.limit) || 30));
       const match = (r) => !q || [r.title, r.site, r.notes, r.copy_text].some((v) => (v || "").toLowerCase().includes(q));
       const mine = db.prepare("SELECT * FROM recipes WHERE user_id = ? ORDER BY last_planned DESC, added_at DESC").all(uid).filter(match).slice(0, limit);
-      let out = mine.length ? `Your recipe box:\n${mine.map((r) => `- [${r.id}] ${r.title}${r.site ? ` (${r.site})` : ""}${r.copy_text ? "" : " [no saved text]"}${r.shared ? "" : " [private]"}`).join("\n")}` : "Your recipe box: no matches.";
+      let out = mine.length ? `Your recipe box:\n${mine.map((r) => `- [${r.id}] ${r.title}${r.site ? ` (${r.site})` : ""}${r.copy_text ? "" : " [no saved text]"}${r.shared ? "" : " [private]"}${ratingText(uid, user.kids, dishKeyOf(r.url, r.title))}`).join("\n")}` : "Your recipe box: no matches.";
       if (a.include_shared !== false) {
         const others = db.prepare("SELECT r.*, u.name AS owner_name FROM recipes r JOIN users u ON u.id = r.user_id WHERE r.shared = 1 AND r.user_id != ? ORDER BY r.added_at DESC").all(uid).filter(match).slice(0, limit);
-        out += others.length ? `\n\nShared by other members:\n${others.map((r) => `- [${r.id}, owner ${r.user_id}] ${r.title}${r.site ? ` (${r.site})` : ""} — shared by ${r.owner_name || "a member"}`).join("\n")}` : "\n\nShared by other members: no matches.";
+        out += others.length ? `\n\nShared by other members:\n${others.map((r) => `- [${r.id}, owner ${r.user_id}] ${r.title}${r.site ? ` (${r.site})` : ""} — shared by ${r.owner_name || "a member"}${ratingText(uid, user.kids, dishKeyOf(r.url, r.title))}`).join("\n")}` : "\n\nShared by other members: no matches.";
       }
       return out;
     }
@@ -539,6 +607,25 @@ async function mcpTool(user, name, a = {}) {
       const url = String(a.url || "").trim(); if (!/^https?:\/\//i.test(url)) throw new Error("The link must start with http:// or https://");
       const saved = await upsertRecipeFromUrl(uid, { url, title: a.title, notes: a.notes, shared: a.shared });
       return `Saved "${saved.title}" to the recipe box (id ${saved.id}). ${saved.copied ? "Ingredients and method saved" : "Couldn't read the page automatically, no text saved"}${saved.picture ? ", picture saved" : ""}.`;
+    }
+    case "rate_dish": {
+      let dish = null;
+      if (a.meal_id) dish = db.prepare("SELECT url, title FROM meals WHERE user_id = ? AND id = ?").get(uid, String(a.meal_id));
+      else if (a.recipe_id) { const owner = a.owner_id ? String(a.owner_id) : uid; dish = db.prepare("SELECT url, title FROM recipes WHERE user_id = ? AND id = ?" + (owner !== uid ? " AND shared = 1" : "")).get(owner, String(a.recipe_id)); }
+      if (!dish) throw new Error("Couldn't find that dish. Pass a meal_id from get_week or a recipe_id from search_recipes.");
+      const kids = user.kids;
+      let kid;
+      if (!kids.length) kid = { id: "_", name: "the kids" };
+      else if (a.kid) kid = kids.find((k) => k.name.toLowerCase() === String(a.kid).trim().toLowerCase());
+      else if (kids.length === 1) kid = kids[0];
+      if (!kid) throw new Error(`Say which child: ${kids.map((k) => k.name).join(", ")}.`);
+      const value = { "loves it": 1, "it's ok": 0, "not a fan": -1 }[String(a.rating || "").toLowerCase()];
+      const key = dishKeyOf(dish.url, dish.title);
+      if (String(a.rating).toLowerCase() === "clear") { db.prepare("DELETE FROM ratings WHERE user_id = ? AND dish_key = ? AND kid_id = ?").run(uid, key, kid.id); return `Cleared ${kid.name}'s rating for "${dish.title}".`; }
+      if (value === undefined) throw new Error('Rating must be "loves it", "it\'s ok", "not a fan" or "clear".');
+      db.prepare(`INSERT INTO ratings (user_id, dish_key, kid_id, rating, title, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, dish_key, kid_id) DO UPDATE SET rating = excluded.rating, title = excluded.title, updated_at = excluded.updated_at`).run(uid, key, kid.id, value, dish.title, Date.now());
+      return `Saved: ${kid.name} — ${RATING_WORD[value]} — "${dish.title}".`;
     }
     case "read_recipe_page": {
       const url = String(a.url || "").trim(); if (!/^https?:\/\//i.test(url)) throw new Error("The link must start with http:// or https://");
@@ -560,7 +647,7 @@ async function mcp(req, res, user) {
   if (msg.id === undefined) { res.writeHead(202); return res.end(); } // notifications
   switch (msg.method) {
     case "initialize": return reply(msg.id, { protocolVersion: msg.params?.protocolVersion || "2025-06-18", capabilities: { tools: { listChanged: false } }, serverInfo: { name: "the-weekly-table", version: "1.0.0" },
-      instructions: `The Weekly Table is ${user.name || user.email}'s weekly meal planner. Weeks run Monday to Sunday. Use get_week to see the plan, plan_meal to add a dish to a day (pass the recipe link when there is one so the recipe gets saved with its ingredients), and search_recipes/get_recipe to read saved recipes.` });
+      instructions: `The Weekly Table is ${user.name || user.email}'s weekly meal planner. Weeks run Monday to Sunday. Use get_week to see the plan, plan_meal to add a dish to a day (pass the recipe link when there is one so the recipe gets saved with its ingredients), and search_recipes/get_recipe to read saved recipes.${user.kids.length ? ` The kids are ${user.kids.map((k) => k.name).join(", ")}.` : ""} Dishes carry the kids' ratings (loves it / it's OK / not a fan): when planning family meals, lean on the kids' favourites and avoid dishes a child is not a fan of unless asked. Use rate_dish to record how a meal went.` });
     case "ping": return reply(msg.id, {});
     case "tools/list": return reply(msg.id, { tools: MCP_TOOLS });
     case "tools/call": {

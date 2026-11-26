@@ -1,6 +1,6 @@
 # The Weekly Table
 
-A weekly meal planner: paste a recipe link from any site, pick a day, and keep every recipe in your own recipe box, with a saved copy of the ingredients and method so the recipe survives even if the website removes it.
+A weekly meal planner: paste a recipe link from any site, pick a day, and keep every recipe in your own recipe box, with a saved copy of the ingredients and method so the recipe survives even if the website removes it. Rate each dish with your kids (loves it, it's OK, not a fan), drag meals between days, and get a shopping list for the week.
 
 - `server.js`: the whole backend (Node 24, built-in SQLite, no dependencies).
 - `public/index.html`: the web app.

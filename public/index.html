@@ -17,14 +17,20 @@
     --line: #CFE8D7;
     --line-strong: #A9D3B8;
     --accent: #E8265E;
+    --accent-deep: #B3134A;
     --accent-ink: #FFFFFF;
     --accent-soft: #FFE1EA;
     --herb: #3E9A3B;
+    --herb-deep: #23701F;
     --herb-soft: #DDF5D6;
+    --sun-soft: #FFF0C2;
+    --sun-line: #E2A400;
+    --sun-deep: #7A5200;
     --today: #FFE86A;
     --today-line: #F5C400;
     --shadow: 0 1px 2px rgba(20,80,50,.06), 0 10px 26px -14px rgba(20,80,50,.25);
-    --radius: 14px;
+    --shadow-lift: 0 2px 4px rgba(20,80,50,.08), 0 18px 34px -16px rgba(20,80,50,.4);
+    --radius: 16px;
     --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
     --font-body: "Nunito", "Avenir Next", "Segoe UI", system-ui, sans-serif;
     color-scheme: light only;
@@ -33,395 +39,545 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: var(--font-body);
-    font-size: 16px;
-    line-height: 1.5;
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--font-body); font-size: 16px; line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
   a { color: inherit; }
   button { font: inherit; color: inherit; cursor: pointer; }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  h1, h2, h3, h4 { text-wrap: balance; }
 
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 80px; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 0 20px 80px; }
 
-  /* Header */
-  .masthead {
-    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
-    gap: 16px 24px; margin-bottom: 26px;
-  }
-  .brand h1 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(34px, 5vw, 52px);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    margin: 0;
-    text-wrap: balance;
-  }
-  .brand h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
-  .brand p { margin: 8px 0 0; color: var(--ink-soft); max-width: 46ch; }
-
+  /* ---------- Buttons ---------- */
   .btn {
-    display: inline-flex; align-items: center; gap: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     border: 1.5px solid var(--line-strong); background: var(--paper);
     color: var(--ink); border-radius: 999px; padding: 10px 18px;
-    font-weight: 700; font-size: 15px; line-height: 1; white-space: nowrap;
+    font-weight: 800; font-size: 15px; line-height: 1; white-space: nowrap; text-decoration: none;
     transition: transform .12s ease, background .12s ease, border-color .12s ease;
   }
   .btn:hover { background: var(--paper-soft); border-color: var(--ink-faint); }
   .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .55; cursor: default; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .btn.primary:hover { filter: brightness(1.06); }
-  .btn.big { padding: 14px 24px; font-size: 17px; }
+  .btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
   .btn.ghost { border-color: transparent; background: transparent; }
-  .btn.ghost:hover { background: var(--paper-soft); }
-  .btn.danger { color: var(--accent); border-color: var(--accent-soft); background: transparent; }
+  .btn.ghost:hover { background: var(--paper-soft); border-color: var(--line); }
+  .btn.danger { color: var(--accent-deep); border-color: var(--accent-soft); background: transparent; }
   .btn.danger:hover { background: var(--accent-soft); }
-  .btn.small { padding: 7px 12px; font-size: 13px; }
+  .btn.small { padding: 8px 13px; font-size: 13.5px; }
   .btn svg { width: 16px; height: 16px; flex: none; }
-
-  /* Week bar */
-  .weekbar {
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-    background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--radius);
-    padding: 12px 14px; margin-bottom: 18px; box-shadow: var(--shadow);
-  }
-  .weeknav { display: flex; align-items: center; gap: 6px; }
-  .weeknav .iconbtn {
+  .btn.small svg { width: 14px; height: 14px; }
+  .iconbtn {
     width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--line-strong);
-    background: var(--paper); display: grid; place-items: center;
+    background: var(--paper); display: grid; place-items: center; padding: 0; flex: none;
   }
-  .weeknav .iconbtn:hover { background: var(--paper-soft); }
-  .weeknav .iconbtn svg { width: 18px; height: 18px; }
-  .weektitle {
-    font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.1;
-    padding: 0 10px; min-width: 15ch;
-  }
-  .weektitle small { display: block; font-family: var(--font-body); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 3px; }
-  .weekmeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .counts { color: var(--ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .iconbtn:hover { border-color: var(--ink-faint); background: var(--paper-soft); }
+  .iconbtn svg { width: 18px; height: 18px; }
+  .linkbtn { background: none; border: none; padding: 0; color: var(--accent-deep); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 
-  /* Day grid */
-  .days {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 12px;
+  /* ---------- Top bar ---------- */
+  .top {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(255,255,255,.94); backdrop-filter: saturate(1.4) blur(8px);
+    border-bottom: 1.5px solid var(--line);
   }
-  @media (max-width: 1100px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  @media (max-width: 760px)  { .days { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 480px)  { .days { grid-template-columns: 1fr; } }
+  .topinner { max-width: 1320px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 22px; }
+  .logo { font-family: var(--font-display); font-weight: 600; font-size: 25px; line-height: 1; text-decoration: none; white-space: nowrap; letter-spacing: -0.01em; }
+  .logo em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .tabs { display: flex; gap: 4px; flex: 1; min-width: 0; }
+  .tab {
+    padding: 9px 15px; border-radius: 999px; font-weight: 800; font-size: 15px; line-height: 1;
+    color: var(--ink-soft); text-decoration: none; white-space: nowrap;
+  }
+  .tab:hover { background: var(--paper-soft); color: var(--ink); }
+  .tab[aria-current="page"] { background: var(--ink); color: #FFFFFF; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: #FFFFFF;
+    font-weight: 800; font-size: 17px; display: grid; place-items: center; flex: none; padding: 0;
+  }
+  .avatar:hover { background: var(--accent-deep); }
+  @media (max-width: 760px) {
+    .topinner { flex-wrap: wrap; gap: 10px; padding: 10px 16px 8px; }
+    .logo { flex: 1; font-size: 22px; }
+    .tabs { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; margin: 0 -4px; }
+    .tab { padding: 8px 13px; font-size: 14.5px; }
+    .wrap { padding: 0 16px 80px; }
+  }
+
+  /* ---------- Page headings ---------- */
+  .viewhead { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px 20px; margin: 26px 0 18px; }
+  .viewhead h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 3.6vw, 38px); line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
+  .viewhead p { margin: 6px 0 0; color: var(--ink-soft); max-width: 60ch; }
+  .viewtools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Week ---------- */
+  .weeknav { display: flex; align-items: center; gap: 10px; }
+  .weektitle { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.4vw, 36px); line-height: 1.05; letter-spacing: -0.01em; min-width: 8ch; }
+  .weektitle small { display: block; font-family: var(--font-body); font-weight: 800; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
+  .counts { color: var(--ink-soft); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .callout {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--paper); border: 1.5px solid var(--line); border-left: 5px solid var(--herb);
+    border-radius: 14px; padding: 12px 14px 12px 16px; margin: 0 0 16px; box-shadow: var(--shadow);
+  }
+  .callout .ce { font-size: 24px; letter-spacing: 2px; line-height: 1; }
+  .callout .ct { flex: 1; min-width: 220px; font-size: 14.5px; color: var(--ink-soft); }
+  .callout .ct strong { color: var(--ink); display: block; font-size: 15.5px; }
+  .callout .iconbtn { width: 34px; height: 34px; border-color: transparent; font-size: 20px; line-height: 1; }
+
+  .weekempty {
+    text-align: center; padding: 26px 20px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius);
+    color: var(--ink-soft); margin-bottom: 16px; background: rgba(255,255,255,.45);
+  }
+  .weekempty h2 { font-family: var(--font-display); font-weight: 600; font-size: 24px; margin: 0 0 4px; color: var(--ink); }
+  .weekempty p { margin: 0 0 14px; }
+
+  .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 1180px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 860px)  { .days { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   .day {
     background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--radius);
-    display: flex; flex-direction: column; min-height: 240px; box-shadow: var(--shadow);
-    overflow: hidden;
+    display: flex; flex-direction: column; min-height: 230px; box-shadow: var(--shadow);
+    transition: border-color .12s ease, background .12s ease;
   }
-  .day.today { border-color: var(--today-line); }
-  .dayhead {
-    padding: 12px 14px 10px; border-bottom: 1.5px solid var(--line); background: var(--paper-soft);
-    display: flex; flex-direction: column; gap: 3px;
-  }
-  .day.today .dayhead { background: var(--today); border-bottom-color: var(--today-line); }
+  .day.today { border-color: var(--today-line); box-shadow: 0 0 0 3px var(--today), var(--shadow); }
+  .day.dropping { border-color: var(--accent); background: var(--accent-soft); }
+  .dayhead { padding: 11px 12px 8px; display: flex; flex-direction: column; gap: 2px; border-radius: 14px 14px 0 0; }
+  .day.today .dayhead { background: var(--today); }
+  .dayname { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1.05; color: var(--accent); }
   .day.today .dayname { color: var(--ink); }
-  .dayname { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1; color: var(--accent); }
-  .daydate { font-size: 13px; font-weight: 700; color: var(--ink-faint); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .daydate { font-size: 12.5px; font-weight: 800; color: var(--ink-faint); letter-spacing: .03em; font-variant-numeric: tabular-nums; }
   .day.today .daydate { color: var(--ink-soft); }
   .day.today .daydate::before { content: "Today \00B7 "; }
-  .daybody { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-  .dayfoot { padding: 0 10px 10px; margin-top: auto; }
+  .daybody { padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .dayfoot { padding: 0 8px 8px; }
   .addhere {
     width: 100%; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--ink-soft);
-    border-radius: 10px; padding: 9px 10px; font-weight: 700; font-size: 14px;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 10px; padding: 8px 10px; font-weight: 800; font-size: 13.5px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
   }
-  .addhere:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-  .addhere svg { width: 15px; height: 15px; }
+  .addhere:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-soft); }
+  .addhere svg { width: 14px; height: 14px; }
 
   /* Meal card */
   .meal {
-    border: 1.5px solid var(--line); border-radius: 10px; background: var(--paper-soft);
-    padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 6px; position: relative;
+    border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper);
+    overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
   }
-  .meal.cooked { opacity: .62; }
-  .meal.cooked .mealtitle { text-decoration: line-through; text-decoration-thickness: 1.5px; text-decoration-color: var(--herb); }
+  .meal:hover { border-color: var(--line-strong); box-shadow: var(--shadow-lift); transform: translateY(-1px); }
+  .meal.dragging { opacity: .45; }
+  .meal .thumb { display: block; width: 100%; height: 88px; object-fit: cover; background: var(--line); }
+  .meal.cooked .thumb { filter: saturate(.55); opacity: .8; }
+  .mbody { padding: 8px 10px 8px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .slot {
-    display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
-    font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--herb); background: var(--herb-soft); border-radius: 999px; padding: 3px 8px;
+    align-self: flex-start; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--herb-deep); background: var(--herb-soft); border-radius: 999px; padding: 2px 8px;
   }
-  .slot.breakfast { color: #B85C00; background: #FFE3B8; }
-  .slot.lunch { color: #007C8F; background: #CFF3F7; }
-  .slot.snack { color: #8A36C4; background: #F0DDFF; }
-  .mealtitle {
-    font-family: var(--font-display); font-weight: 600; font-size: 16.5px; line-height: 1.25;
-    margin: 0; overflow-wrap: anywhere;
+  .slot.breakfast { color: #9A4D00; background: #FFE3B8; }
+  .slot.lunch { color: #00697A; background: #CFF3F7; }
+  .slot.snack { color: #7A2EAD; background: #F0DDFF; }
+  .mealtitle { font-family: var(--font-display); font-weight: 600; font-size: 15.5px; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
+  .mealtitle button { all: unset; cursor: pointer; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .mealtitle button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .meal.cooked .mealtitle { color: var(--ink-soft); }
+  .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 28px; }
+  .tick {
+    width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--paper);
+    display: grid; place-items: center; padding: 0; color: var(--line-strong); flex: none;
   }
-  .mealtitle a { text-decoration: none; }
-  .mealtitle a:hover { text-decoration: underline; text-decoration-color: var(--accent); }
-  .site {
-    display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-faint);
-    font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%;
-  }
-  .site svg { width: 12px; height: 12px; flex: none; }
-  .note { font-size: 13px; color: var(--ink-soft); margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .mealactions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
-  .mealactions .btn.small { padding: 6px 9px; font-size: 12.5px; border-color: transparent; background: transparent; }
-  .mealactions .btn.small:hover { background: var(--paper); border-color: var(--line-strong); }
-  .mealactions .open { color: var(--accent); }
-  .mealactions .cookbtn.on { color: var(--herb); }
+  .tick svg { width: 15px; height: 15px; }
+  .tick:hover { border-color: var(--herb); color: var(--herb); }
+  .tick.on { background: var(--herb); border-color: var(--herb); color: #FFFFFF; }
+  .kfs { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .kf { display: inline-flex; align-items: center; gap: 1px; font-size: 16px; line-height: 1; }
+  .kf b { font-size: 10.5px; font-weight: 800; color: var(--ink-faint); }
+  .ratebtn { border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent-deep); font-weight: 800; font-size: 12px; padding: 5px 9px; line-height: 1.1; }
+  .ratebtn:hover { background: #FFCCDB; }
 
-  /* Empty week */
-  .empty {
-    grid-column: 1 / -1; text-align: center; padding: 44px 20px; border: 1.5px dashed var(--line-strong);
-    border-radius: var(--radius); color: var(--ink-soft);
+  @media (max-width: 560px) {
+    .days { grid-template-columns: 1fr; }
+    .day { min-height: 0; }
+    .dayhead { flex-direction: row; align-items: baseline; justify-content: space-between; }
+    .meal { flex-direction: row; }
+    .meal .thumb { width: 96px; height: auto; min-height: 96px; flex: none; }
+    .mbody { flex: 1; }
   }
-  .empty h2 { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 0 0 6px; color: var(--ink); }
-  .empty p { margin: 0 0 18px; }
+  .dragtip { margin: 12px 2px 0; font-size: 13px; color: var(--ink-faint); font-weight: 700; }
+  @media (hover: none) { .dragtip { display: none; } }
 
-  /* Recipe box */
-  .box { margin-top: 44px; }
-  .boxhead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 14px; }
-  .boxhead h2 { font-family: var(--font-display); font-weight: 600; font-size: 30px; margin: 0; line-height: 1; }
-  .boxhead p { margin: 0; color: var(--ink-soft); }
-  .boxtools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  /* ---------- Recipe cards ---------- */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .search {
     border: 1.5px solid var(--line-strong); background: var(--paper); border-radius: 999px;
-    padding: 9px 16px; font: inherit; color: var(--ink); min-width: 220px;
+    padding: 10px 16px; font: inherit; color: var(--ink); min-width: 240px;
   }
-  .recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-  .recipe {
-    background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px;
-    display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow);
+  .search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    border: 1.5px solid var(--line-strong); background: var(--paper); border-radius: 999px;
+    padding: 8px 14px; font-weight: 800; font-size: 14px; line-height: 1; display: inline-flex; align-items: center; gap: 6px;
   }
-  .recipe .mealtitle { font-size: 17px; }
-  .recipe .note { font-size: 13px; }
-  .recipe .meta { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; font-variant-numeric: tabular-nums; }
-  .recipe .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-  .boxempty { grid-column: 1 / -1; color: var(--ink-soft); padding: 18px 0; }
+  .chip:hover { border-color: var(--ink-faint); }
+  .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #FFFFFF; }
+  .chip .n { font-variant-numeric: tabular-nums; opacity: .65; font-weight: 700; }
+  .sortsel { font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); background: var(--paper); border: 1.5px solid var(--line-strong); border-radius: 999px; padding: 8px 12px; }
 
-  /* Modal */
+  .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .rcard {
+    background: var(--paper); border: 1.5px solid var(--line); border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column; box-shadow: var(--shadow);
+  }
+  .rimgbtn { all: unset; cursor: pointer; position: relative; display: block; }
+  .rimgbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .rimg { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--paper-soft); }
+  .rimg.ph { display: grid; place-items: center; color: var(--line-strong); }
+  .rimg.ph svg { width: 46px; height: 46px; }
+  .favtag {
+    position: absolute; left: 10px; top: 10px; background: #FFFFFF; color: var(--herb-deep);
+    font-size: 12.5px; font-weight: 800; border-radius: 999px; padding: 4px 10px 4px 7px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .rbody { padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .rtitle { font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 1.22; margin: 0; overflow-wrap: anywhere; }
+  .rtitle button { all: unset; cursor: pointer; }
+  .rtitle button:hover { text-decoration: underline; text-decoration-color: var(--accent); }
+  .rtitle button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .site { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .kidline { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 13.5px; font-weight: 800; color: var(--ink-soft); margin-top: 2px; }
+  .note { font-size: 13px; color: var(--ink-soft); margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .meta { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; margin-top: auto; padding-top: 4px; }
+  .ractions { padding: 8px 12px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .boxempty { grid-column: 1 / -1; color: var(--ink-soft); padding: 18px 0; margin: 0; }
+
+  /* ---------- Dialogs ---------- */
   dialog {
-    border: none; border-radius: 18px; padding: 0; background: var(--paper); color: var(--ink);
-    width: min(540px, calc(100vw - 32px)); box-shadow: 0 30px 80px -20px rgba(0,0,0,.45);
+    border: none; border-radius: 20px; padding: 0; background: var(--paper); color: var(--ink);
+    width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.45);
   }
   dialog::backdrop { background: rgba(30, 20, 28, .45); backdrop-filter: blur(2px); }
   .form { padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
-  .form h2 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; line-height: 1; }
-  .form h2 + p { margin: -6px 0 0; color: var(--ink-soft); font-size: 14px; }
+  .form h2 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; line-height: 1.05; padding-right: 40px; }
+  .form h2 + p { margin: -6px 0 0; color: var(--ink-soft); font-size: 14.5px; }
+  .form h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; }
   .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+  .field > label, .fieldlabel { font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
   .field label span { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--ink-faint); }
-  .field input, .field select, .field textarea {
+  .field input, .field select, .field textarea, .kidedit input {
     font: inherit; color: var(--ink); background: var(--paper-soft);
     border: 1.5px solid var(--line-strong); border-radius: 10px; padding: 11px 13px; width: 100%;
   }
-  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .field input:focus, .field select:focus, .field textarea:focus, .kidedit input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .field textarea { min-height: 70px; resize: vertical; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } .form { padding: 20px 18px 18px; } }
   .hint { font-size: 13px; color: var(--ink-faint); margin: 0; }
-  .hint.err { color: var(--accent); font-weight: 700; }
-  .formfoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .hint.err { color: var(--accent-deep); font-weight: 800; }
+  .formfoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
   .formfoot .spacer { flex: 1; }
+  .xbtn {
+    position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%;
+    border: 1.5px solid var(--line-strong); background: var(--paper); display: grid; place-items: center;
+    font-size: 22px; line-height: 1; z-index: 2; box-shadow: var(--shadow); padding: 0;
+  }
+  .xbtn:hover { border-color: var(--accent); color: var(--accent); }
+  dialog { position: relative; }
+  .or { display: flex; align-items: center; gap: 10px; color: var(--ink-faint); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1.5px; background: var(--line); }
+
+  /* Recipe picker inside "Add a meal" */
+  .picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 214px; overflow: auto; padding: 2px; }
+  .pick {
+    display: flex; align-items: center; gap: 8px; text-align: left; border: 1.5px solid var(--line);
+    background: var(--paper); border-radius: 12px; padding: 6px 8px 6px 6px; font-weight: 700; font-size: 13.5px; line-height: 1.2;
+  }
+  .pick:hover { border-color: var(--line-strong); background: var(--paper-soft); }
+  .pick.on { border-color: var(--accent); background: var(--accent-soft); }
+  .pick img, .pick .pph { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; background: var(--paper-soft); display: grid; place-items: center; color: var(--line-strong); }
+  .pick .pph svg { width: 20px; height: 20px; }
+  .pick .pt { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pick .pf { font-size: 15px; flex: none; }
+  .copyrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .copystatus { font-size: 13px; color: var(--ink-faint); font-weight: 700; }
+  .copystatus.ok { color: var(--herb-deep); }
+  .copystatus.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; margin-right: 6px; vertical-align: -1px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  details.copybox { border: 1.5px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--paper-soft); }
+  details.copybox summary { cursor: pointer; font-weight: 800; font-size: 14px; color: var(--ink-soft); padding: 10px 0; }
+  details.copybox[open] summary { padding-bottom: 6px; }
+  details.copybox textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--paper); border: 1.5px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; width: 100%; min-height: 140px; resize: vertical; margin-bottom: 12px; }
+  .check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  /* Meal / recipe sheet */
+  .sheet { width: min(720px, calc(100vw - 24px)); }
+  .sheet .hero { width: 100%; height: 260px; object-fit: cover; display: block; background: var(--line); }
+  @media (max-width: 560px) { .sheet .hero { height: 190px; } }
+  .sheetbody { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 480px) { .sheetbody { padding: 18px 18px 20px; } }
+  .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--accent-deep); margin-bottom: -8px; }
+  .sheet h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 4vw, 32px); line-height: 1.08; margin: 0; padding-right: 36px; overflow-wrap: anywhere; }
+  .sheet .hero:not([hidden]) ~ .sheetbody h2 { padding-right: 0; }
+  .sitelink { font-size: 14px; font-weight: 800; color: var(--ink-faint); text-decoration: none; margin-top: -8px; }
+  .sitelink:hover { color: var(--accent-deep); text-decoration: underline; }
+  .sheetactions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cookbtn.on { background: var(--herb); border-color: var(--herb); color: #FFFFFF; }
+  .cookbtn.on:hover { background: var(--herb-deep); border-color: var(--herb-deep); }
+  .kidrate { background: var(--paper-soft); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .kidrate.flash { animation: flash 1.2s ease; }
+  @keyframes flash { 0%, 40% { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); } 100% { border-color: var(--line); box-shadow: none; } }
+  .kidrate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .kidrate h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+  .kidrow { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+  .kidwho { display: flex; align-items: center; gap: 8px; font-weight: 800; min-width: 110px; }
+  .kidav {
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    font-weight: 800; font-size: 14px; color: #FFFFFF; background: hsl(var(--h, 340) 58% 44%);
+  }
+  .faces { display: flex; gap: 6px; flex-wrap: wrap; }
+  .face {
+    border: 1.5px solid var(--line-strong); background: var(--paper); border-radius: 999px;
+    padding: 6px 13px 6px 8px; display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 800; font-size: 14px; color: var(--ink-soft); line-height: 1;
+  }
+  .face .e { font-size: 22px; line-height: 1; }
+  .face:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .face.love[aria-pressed="true"] { background: var(--herb-soft); border-color: var(--herb); color: var(--herb-deep); }
+  .face.ok[aria-pressed="true"] { background: var(--sun-soft); border-color: var(--sun-line); color: var(--sun-deep); }
+  .face.no[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+  .face[aria-pressed="false"] .e { filter: grayscale(.35); }
+  @media (max-width: 520px) {
+    .kidwho { min-width: 0; width: 100%; }
+    .faces { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+    .face { flex-direction: column; justify-content: center; border-radius: 14px; padding: 9px 4px 8px; gap: 4px; font-size: 12.5px; }
+    .face .e { font-size: 26px; }
+  }
+  .sheetnote { margin: 0; background: #FFFBEA; border: 1.5px solid #F4E3A3; border-radius: 12px; padding: 10px 14px; font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .recipehead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .recipehead h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+  .readertext { overflow-wrap: anywhere; font-size: 15px; line-height: 1.55; background: var(--paper-soft); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 6px 0 0; }
+  .readertext h4 { font-family: var(--font-display); font-size: 18px; margin: 14px 0 4px; }
+  .readertext h4:first-child { margin-top: 0; }
+  .readertext ul, .readertext ol { margin: 0 0 6px; padding-left: 22px; }
+  .readertext li { margin: 4px 0; }
+  .readertext ul.ings { list-style: none; padding-left: 0; }
+  .ing { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 8px; }
+  .ing:hover { background: var(--paper); }
+  .ing input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--herb); cursor: pointer; }
+  .ing.done span { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--ink-faint); }
+
+  /* Shopping list */
+  .shopgroup h4 { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin: 0 0 2px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .shopgroup h4 small { font-family: var(--font-body); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+  .shopgroup ul { list-style: none; margin: 0; padding: 0; }
+  .shoplist { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Settings */
+  .setsec { border-top: 1.5px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .setsec p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+  .kidlist { display: flex; flex-direction: column; gap: 8px; }
+  .kidedit { display: flex; align-items: center; gap: 10px; }
+  .kidedit input { padding: 9px 12px; }
+  .keys { display: flex; flex-direction: column; gap: 8px; }
+  .key { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper-soft); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 8px 8px 14px; }
+  .key .meta { flex: 1; font-size: 13px; color: var(--ink-soft); margin: 0; padding: 0; }
+  .key strong { color: var(--ink); }
+  .codebox { background: var(--ink); color: #F7F2F5; border-radius: 10px; padding: 12px 14px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .who { font-size: 14px; color: var(--ink-soft); margin: -6px 0 0; }
+  .who strong { color: var(--ink); }
+
+  /* ---------- Sign-in page ---------- */
+  .landing { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; max-width: 1040px; margin: 0 auto; padding: 56px 0 40px; }
+  @media (max-width: 860px) { .landing { grid-template-columns: 1fr; gap: 26px; padding-top: 32px; } }
+  .landing h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(42px, 7vw, 68px); line-height: .98; letter-spacing: -0.015em; margin: 0; }
+  .landing h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .landing .lead { font-size: 19px; color: var(--ink-soft); margin: 16px 0 22px; max-width: 34ch; }
+  .perks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .perks li { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+  .perks li span { width: 42px; height: 42px; border-radius: 12px; background: var(--paper); border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 21px; flex: none; }
+  .auth { background: var(--paper); border: 1.5px solid var(--line); border-radius: 20px; padding: 28px 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+  .auth h2 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; line-height: 1.1; }
+  .auth > p { margin: 0; color: var(--ink-soft); }
+  .auth .btn.primary { width: 100%; padding: 13px 18px; font-size: 16px; }
+  .auth .switch { text-align: center; font-size: 14px; color: var(--ink-soft); margin: 0; }
+  .auth .switch button { background: none; border: none; padding: 0; color: var(--accent-deep); font-weight: 800; text-decoration: underline; }
 
   /* Toast */
   .toast {
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
     background: var(--ink); color: #FFFFFF; padding: 11px 18px; border-radius: 999px;
     font-weight: 700; font-size: 14px; opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 50;
-    max-width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 14px;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.actionable.show { pointer-events: auto; }
+  .toast button { background: none; border: 0; padding: 0; color: #FFC2D4; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
 
-  .status { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
-  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
-  .status.live .dot { background: var(--herb); }
-
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  /* Sign-in */
-  .auth { max-width: 440px; margin: 40px auto 0; background: var(--paper); border: 1.5px solid var(--line); border-radius: 18px; padding: 28px 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
-  .auth h2 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; line-height: 1.1; }
-  .auth p { margin: 0; color: var(--ink-soft); }
-  .auth .btn { justify-content: center; width: 100%; }
-  .gbtn svg { width: 18px; height: 18px; }
-  .or { display: flex; align-items: center; gap: 10px; color: var(--ink-faint); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .or::before, .or::after { content: ""; flex: 1; height: 1.5px; background: var(--line); }
-  .auth .switch { text-align: center; font-size: 14px; color: var(--ink-soft); }
-  .auth .switch button, .linkbtn { background: none; border: none; padding: 0; color: var(--accent); font-weight: 800; text-decoration: underline; }
-  .who { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
-  .who strong { color: var(--ink); }
-  .brandrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .setup { max-width: 640px; margin: 40px auto; background: var(--paper); border: 1.5px solid var(--today-line); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); }
-  .setup h2 { font-family: var(--font-display); margin: 0 0 8px; }
-  .copyfield textarea { min-height: 120px; font-size: 14px; }
-  .copyrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .copystatus { font-size: 13px; color: var(--ink-faint); font-weight: 700; }
-  .copystatus.ok { color: var(--herb); }
-  .copystatus.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; margin-right: 6px; vertical-align: -1px; animation: spin .8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .reader { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
-  .xbtn { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--paper); display: grid; place-items: center; font-size: 22px; line-height: 1; z-index: 2; box-shadow: var(--shadow); }
-  .xbtn:hover { background: var(--paper-soft); border-color: var(--accent); color: var(--accent); }
-  dialog { position: relative; }
-  .reader .form { gap: 10px; }
-  .reader .site { margin-top: -4px; }
-  .readertext { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.55; max-height: 60vh; overflow: auto; background: var(--paper-soft); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0; }
-  .readertext h4 { font-family: var(--font-display); font-size: 18px; margin: 12px 0 4px; }
-  .readertext h4:first-child { margin-top: 0; }
-  .readertext ul, .readertext ol { margin: 0; padding-left: 22px; }
-  .readertext li { margin: 3px 0; }
-  .readertext ul.ings { list-style: none; padding-left: 0; }
-  .ing { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 4px 6px; margin: 0 -6px; border-radius: 8px; }
-  .ing:hover { background: var(--paper); }
-  .ing input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--herb); cursor: pointer; }
-  .ing.done span { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--ink-faint); }
-  .mealactions .copybtn, .recipe .actions .copybtn { color: var(--herb); }
-  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--herb); }
-  .badge.off { color: var(--ink-faint); }
-  .owner { font-size: 12.5px; color: var(--ink-faint); font-weight: 700; }
-  .check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
-  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
-  .keys { display: flex; flex-direction: column; gap: 8px; }
-  .key { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; }
-  .key .meta { flex: 1; font-size: 13px; color: var(--ink-soft); }
-  .key strong { color: var(--ink); }
-  .codebox { background: var(--ink); color: #F7F2F5; border-radius: 10px; padding: 12px 14px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .connect p { margin: 0; color: var(--ink-soft); max-width: 70ch; }
-  .thumb { display: block; width: 100%; object-fit: cover; border-radius: 8px; background: var(--line); }
-  .meal .thumb { height: 74px; margin: -2px 0 2px; }
-  .recipe .thumb { height: 130px; margin: -4px 0 4px; }
-  .reader .hero { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; display: block; }
-  .mealtitle a, .mealtitle button { all: unset; cursor: pointer; font: inherit; color: inherit; }
-  .mealtitle a:hover, .mealtitle button:hover { text-decoration: underline; text-decoration-color: var(--accent); }
-  .mealtitle button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-  .setup code { background: var(--paper-soft); padding: 2px 6px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <header class="masthead">
-    <div class="brand">
+<header class="top" id="top" hidden>
+  <div class="topinner">
+    <a class="logo" href="#week">The Weekly <em>Table</em></a>
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#week" data-tab="week">Week</a>
+      <a class="tab" href="#recipes" data-tab="recipes">Recipe box</a>
+      <a class="tab" href="#shared" data-tab="shared">Everyone's recipes</a>
+    </nav>
+    <button class="avatar" id="meBtn" type="button" aria-label="Your family and settings" title="Your family and settings"></button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="landing" id="auth" hidden>
+    <div>
       <h1>The Weekly <em>Table</em></h1>
-      <p>Plan the week's meals in one place. Paste a link from any recipe site, pick a day, and you're done.</p>
+      <p class="lead">Plan the week's meals, keep every recipe you love, and remember which dishes the kids actually eat.</p>
+      <ul class="perks">
+        <li><span aria-hidden="true">🗓️</span>Paste a link from any recipe site and drop it on a day</li>
+        <li><span aria-hidden="true">📖</span>A saved copy of every recipe, even if the website disappears</li>
+        <li><span aria-hidden="true">😋</span>Rate meals with your kids: loves it, it's OK, or not a fan</li>
+      </ul>
     </div>
-    <div class="brandrow">
-      <span class="who" id="who" hidden></span>
-      <button class="btn small ghost" id="signOutBtn" hidden>Sign out</button>
-      <button class="btn primary big" id="addBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Add a recipe
-      </button>
+    <div class="auth">
+      <h2 id="authTitle">Welcome back</h2>
+      <p id="authIntro">Sign in to see your week and your recipe box from any device.</p>
+      <form id="authForm" class="form" style="padding:0; gap:12px;">
+        <div class="field" id="nameField" hidden>
+          <label for="aName">Your name</label>
+          <input id="aName" type="text" autocomplete="name" placeholder="e.g. Jeanne">
+        </div>
+        <div class="field">
+          <label for="aEmail">Email</label>
+          <input id="aEmail" type="email" autocomplete="email" required placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label for="aPass">Password</label>
+          <input id="aPass" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
+        </div>
+        <p class="hint err" id="authErr" hidden></p>
+        <button class="btn primary" type="submit" id="authSubmit">Sign in</button>
+        <p class="switch" id="switchRow">New here? <button type="button" id="toSignUp">Create an account</button></p>
+      </form>
     </div>
-  </header>
-
-  <section class="auth" id="auth" hidden>
-    <h2 id="authTitle">Welcome to your table</h2>
-    <p id="authIntro">Sign in to see your weekly plan and recipe box from any device.</p>
-    <button class="btn gbtn" id="googleBtn" type="button" hidden>
-      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.8l-7.8 6C6.5 42.6 14.6 48 24 48z"/></svg>
-      Continue with Google
-    </button>
-
-    <form id="authForm" class="form" style="padding:0; gap:12px;">
-      <div class="field" id="nameField" hidden>
-        <label for="aName">Your name</label>
-        <input id="aName" type="text" autocomplete="name" placeholder="e.g. Jeanne">
-      </div>
-      <div class="field">
-        <label for="aEmail">Email</label>
-        <input id="aEmail" type="email" autocomplete="email" required placeholder="you@example.com">
-      </div>
-      <div class="field">
-        <label for="aPass">Password</label>
-        <input id="aPass" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
-      </div>
-      <p class="hint err" id="authErr" hidden></p>
-      <button class="btn primary" type="submit" id="authSubmit">Sign in</button>
-      <p class="switch" id="switchRow">New here? <button type="button" id="toSignUp">Create an account</button></p>
-      <p class="switch" id="forgotRow" hidden></p>
-    </form>
   </section>
-
 
   <div id="app" hidden>
 
-  <section class="weekbar" aria-label="Week">
-    <div class="weeknav">
-      <button class="iconbtn" id="prevWeek" title="Previous week" aria-label="Previous week">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
-      </button>
-      <div class="weektitle"><small id="weekLabel">This week</small><span id="weekRange">&hellip;</span></div>
-      <button class="iconbtn" id="nextWeek" title="Next week" aria-label="Next week">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-      </button>
-    </div>
-    <div class="weekmeta">
-      <span class="counts" id="counts"></span>
-      <button class="btn small" id="todayBtn">Back to this week</button>
-      <span class="status" id="status"><span class="dot"></span><span>Loading&hellip;</span></span>
-    </div>
-  </section>
+    <!-- Week -->
+    <section data-view-panel="week" aria-label="Week plan">
+      <div class="viewhead">
+        <div class="weeknav">
+          <button class="iconbtn" id="prevWeek" title="Previous week" aria-label="Previous week">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <div class="weektitle"><small id="weekLabel">This week</small><span id="weekRange">&hellip;</span></div>
+          <button class="iconbtn" id="nextWeek" title="Next week" aria-label="Next week">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <button class="btn small ghost" id="todayBtn" hidden>Back to this week</button>
+        </div>
+        <div class="viewtools">
+          <span class="counts" id="counts"></span>
+          <button class="btn" id="shopBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h7.7a1.5 1.5 0 0 0 1.4-1l2-6.3H6.2"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>
+            Shopping list
+          </button>
+          <button class="btn primary" id="addBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add a meal
+          </button>
+        </div>
+      </div>
 
-  <section class="days" id="days" aria-label="Days of the week"></section>
+      <div class="callout" id="kidsCallout" hidden>
+        <span class="ce" aria-hidden="true">😋😐😖</span>
+        <div class="ct"><strong>New: what do the kids think?</strong>Open any meal and tap a face to remember whether the kids liked it. Add their names to keep track of each child.</div>
+        <button class="btn small" id="calloutKids">Add your kids</button>
+        <button class="iconbtn" id="calloutX" aria-label="Hide this tip" title="Hide this tip">&times;</button>
+      </div>
 
-  <section class="box" aria-label="Recipe box">
-    <div class="boxhead">
-      <div>
-        <h2>Recipe box</h2>
-        <p>All your recipes in one place. Save anything you find, then plan it whenever you like.</p>
+      <div class="weekempty" id="weekEmpty" hidden>
+        <h2>An empty week, full of possibilities</h2>
+        <p>Pick something from your recipe box, or paste a link from any recipe site.</p>
+        <button class="btn primary" id="emptyAdd">Plan the first meal</button>
       </div>
-      <div class="boxtools">
-        <input class="search" id="search" type="search" placeholder="Search your recipes&hellip;" aria-label="Search recipes">
-        <button class="btn" id="shareAllBtn" title="Share or unshare every recipe in your box">Share all</button>
-        <button class="btn primary" id="addRecipeBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          Add to recipe box
-        </button>
-      </div>
-    </div>
-    <div class="recipes" id="recipes"></div>
-  </section>
 
-  <section class="box" aria-label="Shared recipes">
-    <div class="boxhead">
-      <div>
-        <h2>Everyone's recipes</h2>
-        <p>Recipes shared by the other members. Plan one straight away, or add it to your own box.</p>
-      </div>
-      <div class="boxtools">
-        <input class="search" id="sharedSearch" type="search" placeholder="Search shared recipes&hellip;" aria-label="Search shared recipes">
-      </div>
-    </div>
-    <div class="recipes" id="shared"></div>
-  </section>
+      <div class="days" id="days" aria-label="Days of the week"></div>
+      <p class="dragtip">Tip: drag a meal onto another day to move it.</p>
+    </section>
 
-  <section class="box connect" aria-label="Connect Claude">
-    <div class="boxhead">
-      <div>
-        <h2>Use it from Claude</h2>
-        <p>Let Claude read your week, plan meals and save recipes for you, straight from a chat. Create a connection key, then paste the command it gives you into a terminal where Claude Code is installed.</p>
+    <!-- Recipe box -->
+    <section data-view-panel="recipes" aria-label="Recipe box" hidden>
+      <div class="viewhead">
+        <div>
+          <h1>Recipe box</h1>
+          <p>Every recipe you've saved or planned. Open one to cook from it, plan it, or ask the kids what they think.</p>
+        </div>
+        <div class="viewtools">
+          <input class="search" id="search" type="search" placeholder="Search your recipes&hellip;" aria-label="Search your recipes">
+          <button class="btn primary" id="addRecipeBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add a recipe
+          </button>
+        </div>
       </div>
-      <div class="boxtools">
-        <button class="btn primary" id="newKeyBtn">Create a connection key</button>
+      <div class="toolbar">
+        <div class="chips" id="chips" role="group" aria-label="Filter by what the kids think"></div>
+        <div class="viewtools">
+          <select class="sortsel" id="boxSort" aria-label="Sort recipes">
+            <option value="recent">Recently planned</option>
+            <option value="fav">Kid favourites first</option>
+            <option value="az">Name A–Z</option>
+            <option value="new">Newest first</option>
+          </select>
+          <button class="btn small ghost" id="shareAllBtn" title="Share or unshare every recipe in your box">Share all</button>
+        </div>
       </div>
-    </div>
-    <div class="keys" id="keys"></div>
-  </section>
+      <div class="rgrid" id="recipes"></div>
+    </section>
+
+    <!-- Everyone's recipes -->
+    <section data-view-panel="shared" aria-label="Everyone's recipes" hidden>
+      <div class="viewhead">
+        <div>
+          <h1>Everyone's recipes</h1>
+          <p>Recipes shared by the other members. Plan one straight away, or add it to your own box.</p>
+        </div>
+        <div class="viewtools">
+          <input class="search" id="sharedSearch" type="search" placeholder="Search shared recipes&hellip;" aria-label="Search shared recipes">
+        </div>
+      </div>
+      <div class="rgrid" id="shared"></div>
+    </section>
   </div>
-</div>
+</main>
 
-<dialog id="dlg">
+<!-- Add / edit a meal -->
+<dialog id="dlg" aria-labelledby="formTitle">
+  <button type="button" class="xbtn" data-close aria-label="Close">&times;</button>
   <form class="form" id="form" method="dialog">
-    <h2 id="formTitle">Add a recipe</h2>
-    <p>Paste the recipe's web address first and we'll fill in a name for you.</p>
+    <h2 id="formTitle">Add a meal</h2>
+    <div class="field" id="pickField">
+      <div class="copyrow" style="justify-content:space-between">
+        <span class="fieldlabel">From your recipe box</span>
+        <input class="search" id="pickSearch" type="search" placeholder="Search&hellip;" aria-label="Search your recipe box" style="min-width:0; width:170px; padding:7px 13px; font-size:14px">
+      </div>
+      <div class="picks" id="picks"></div>
+      <div class="or" style="margin-top:6px">or add a new one</div>
+    </div>
     <div class="field">
       <label for="fUrl">Recipe link <span>(paste from the website)</span></label>
       <input id="fUrl" type="url" inputmode="url" placeholder="https://&hellip;" autocomplete="off">
-      <p class="hint" id="urlHint">Leave empty if it's a recipe you know by heart.</p>
+      <div class="copyrow"><span class="copystatus" id="fCopyStatus"></span><span class="hint" id="urlHint">Leave empty if it's a recipe you know by heart.</span></div>
     </div>
     <div class="field">
       <label for="fTitle">Name</label>
@@ -446,30 +602,32 @@
       <label for="fNotes">Notes <span>(optional)</span></label>
       <textarea id="fNotes" placeholder="Double the sauce, buy fresh basil, serves 4"></textarea>
     </div>
-    <div class="field copyfield">
-      <label for="fCopy">Saved copy of the recipe</label>
-      <textarea id="fCopy" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
-      <div class="copyrow"><button type="button" class="btn small" id="fFetchBtn">Fetch from the link</button><span class="copystatus" id="fCopyStatus"></span></div>
-      <input type="hidden" id="fImage">
-    </div>
+    <details class="copybox">
+      <summary>Saved copy of the recipe</summary>
+      <textarea id="fCopy" aria-label="Saved copy of the recipe" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
+      <div class="copyrow" style="margin-bottom:12px"><button type="button" class="btn small" id="fFetchBtn">Fetch again from the link</button></div>
+    </details>
+    <input type="hidden" id="fImage">
     <p class="hint err" id="formErr" hidden></p>
     <div class="formfoot">
       <button type="button" class="btn danger small" id="deleteBtn" hidden>Remove from this week</button>
       <span class="spacer"></span>
-      <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
       <button type="submit" class="btn primary" id="saveBtn">Save</button>
     </div>
   </form>
 </dialog>
 
-<dialog id="rdlg">
+<!-- Add / edit a recipe in the box -->
+<dialog id="rdlg" aria-labelledby="rformTitle">
+  <button type="button" class="xbtn" data-close aria-label="Close">&times;</button>
   <form class="form" id="rform" method="dialog">
-    <h2 id="rformTitle">Add to recipe box</h2>
+    <h2 id="rformTitle">Add a recipe</h2>
     <p>Save a recipe for later. You can plan it onto a day whenever you like.</p>
     <div class="field">
       <label for="rUrl">Recipe link <span>(paste from the website)</span></label>
       <input id="rUrl" type="url" inputmode="url" placeholder="https://&hellip;" autocomplete="off">
-      <p class="hint" id="rUrlHint">Leave empty if it's a recipe you know by heart.</p>
+      <div class="copyrow"><span class="copystatus" id="rCopyStatus"></span><span class="hint" id="rUrlHint">Leave empty if it's a recipe you know by heart.</span></div>
     </div>
     <div class="field">
       <label for="rTitle">Name</label>
@@ -477,54 +635,101 @@
     </div>
     <div class="field">
       <label for="rNotes">Notes <span>(optional)</span></label>
-      <textarea id="rNotes" placeholder="Great for weeknights, kids love it, needs a slow cooker"></textarea>
+      <textarea id="rNotes" placeholder="Great for weeknights, needs a slow cooker"></textarea>
     </div>
-    <div class="field copyfield">
-      <label for="rCopy">Saved copy of the recipe</label>
-      <textarea id="rCopy" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
-      <div class="copyrow"><button type="button" class="btn small" id="rFetchBtn">Fetch from the link</button><span class="copystatus" id="rCopyStatus"></span></div>
-      <input type="hidden" id="rImage">
-    </div>
-    <label class="check"><input type="checkbox" id="rShared" checked> Share this recipe with everyone</label>
+    <details class="copybox">
+      <summary>Saved copy of the recipe</summary>
+      <textarea id="rCopy" aria-label="Saved copy of the recipe" placeholder="The ingredients and method are saved here automatically from the link, so the recipe survives even if the website removes it. You can also paste them in yourself."></textarea>
+      <div class="copyrow" style="margin-bottom:12px"><button type="button" class="btn small" id="rFetchBtn">Fetch again from the link</button></div>
+    </details>
+    <input type="hidden" id="rImage">
+    <label class="check"><input type="checkbox" id="rShared" checked> Share this recipe with the other members</label>
     <p class="hint err" id="rformErr" hidden></p>
     <div class="formfoot">
       <button type="button" class="btn danger small" id="rDeleteBtn" hidden>Remove from recipe box</button>
       <span class="spacer"></span>
-      <button type="button" class="btn ghost" id="rCancelBtn">Cancel</button>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
       <button type="submit" class="btn primary" id="rSaveBtn">Save</button>
     </div>
   </form>
 </dialog>
 
-<dialog id="vdlg" class="reader">
-  <button type="button" class="xbtn" id="vX" aria-label="Close">&times;</button>
+<!-- A meal or recipe, opened -->
+<dialog id="sheet" class="sheet" aria-labelledby="sTitle">
+  <button type="button" class="xbtn" data-close aria-label="Close">&times;</button>
+  <img class="hero" id="sHero" alt="" hidden>
+  <div class="sheetbody">
+    <div class="eyebrow" id="sEyebrow"></div>
+    <h2 id="sTitle"></h2>
+    <a class="sitelink" id="sSite" target="_blank" rel="noopener" hidden></a>
+    <div class="sheetactions" id="sActions"></div>
+    <section class="kidrate" id="sKidBox" aria-labelledby="sKidsTitle">
+      <div class="kidrate-head">
+        <h3 id="sKidsTitle">What do the kids think?</h3>
+        <button type="button" class="linkbtn" id="sKidsSetup"></button>
+      </div>
+      <div id="sKids" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+    <p class="sheetnote" id="sNotes" hidden></p>
+    <div id="sRecipe"></div>
+  </div>
+</dialog>
+
+<!-- Shopping list -->
+<dialog id="shop" aria-labelledby="shopTitle">
+  <button type="button" class="xbtn" data-close aria-label="Close">&times;</button>
   <div class="form">
-    <img class="hero" id="vImage" alt="" hidden>
-    <h2 id="vTitle"></h2>
-    <span class="site" id="vSite"></span>
-    <div class="readertext" id="vText"></div>
+    <h2 id="shopTitle">Shopping list</h2>
+    <p id="shopSub"></p>
+    <div class="shoplist" id="shopBody"></div>
     <div class="formfoot">
-      <a class="btn small" id="vOpen" href="#" target="_blank" rel="noopener">Open original ↗</a>
-      <button type="button" class="btn small ghost" id="vUntick" hidden>Untick all</button>
+      <button type="button" class="btn small" id="shopCopy">Copy what's left</button>
+      <button type="button" class="btn small ghost" id="shopUntick">Untick all</button>
       <span class="spacer"></span>
-      <button type="button" class="btn primary" id="vClose">Close</button>
+      <button type="button" class="btn primary" data-close>Done</button>
     </div>
   </div>
 </dialog>
 
-<dialog id="kdlg">
-  <div class="form connect">
-    <h2>Your connection key</h2>
+<!-- Family and settings -->
+<dialog id="settings" aria-labelledby="setTitle">
+  <button type="button" class="xbtn" data-close aria-label="Close">&times;</button>
+  <div class="form">
+    <h2 id="setTitle">Your table</h2>
+    <p class="who" id="setWho"></p>
+    <section class="setsec" aria-labelledby="kidsHead">
+      <h3 id="kidsHead">Your kids</h3>
+      <p>Add your kids' names to keep track of which meals each of them likes. Without names, you rate for all the kids together.</p>
+      <div class="kidlist" id="kidList"></div>
+      <div><button type="button" class="btn small" id="addKid">+ Add a child</button></div>
+    </section>
+    <section class="setsec" aria-labelledby="claudeHead">
+      <h3 id="claudeHead">Use it from Claude</h3>
+      <p>Let Claude read your week, plan meals, save recipes and remember what the kids like, straight from a chat. Create a connection key, then paste the command it gives you into a terminal where Claude Code is installed.</p>
+      <div class="keys" id="keys"></div>
+      <div><button type="button" class="btn small" id="newKeyBtn">Create a connection key</button></div>
+    </section>
+    <div class="formfoot" style="border-top:1.5px solid var(--line); padding-top:16px">
+      <button type="button" class="btn danger small" id="signOutBtn">Sign out</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn primary" data-close>Done</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="kdlg" aria-labelledby="kTitle">
+  <div class="form">
+    <h2 id="kTitle">Your connection key</h2>
     <p>Copy this now: for safety it is shown only once. If you lose it, create a new one.</p>
     <div class="codebox" id="kKey"></div>
-    <p><strong>Connect Claude Code</strong> by running this in a terminal:</p>
+    <p style="margin:0"><strong>Connect Claude Code</strong> by running this in a terminal:</p>
     <div class="codebox" id="kCmd"></div>
-    <p>Then ask Claude things like "what's for dinner this week?", "plan this recipe for Thursday: &lt;link&gt;" or "what do I need for tonight's dish?". Other apps that speak MCP can use the same address and key.</p>
+    <p style="margin:0;color:var(--ink-soft)">Then ask Claude things like "what's for dinner this week?", "plan this recipe for Thursday: &lt;link&gt;" or "plan next week with things the kids love". Other apps that speak MCP can use the same address and key.</p>
     <div class="formfoot">
       <button type="button" class="btn small" id="kCopyKey">Copy key</button>
       <button type="button" class="btn small" id="kCopyCmd">Copy command</button>
       <span class="spacer"></span>
-      <button type="button" class="btn primary" id="kClose">Done</button>
+      <button type="button" class="btn primary" data-close>Done</button>
     </div>
   </div>
 </dialog>
@@ -533,20 +738,29 @@
 
 <script>
 (() => {
+  "use strict";
   // ---------- helpers ----------
-  const $ = (s) => document.querySelector(s);
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const pad = (n) => String(n).padStart(2, "0");
   const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parseIso = (s) => { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, m - 1, d); };
   const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const SLOT_ORDER = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
-  const SLOT_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack / dessert" };
+  const SLOT_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const ICON = {
+    plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+    fork: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a2.5 2.5 0 0 0 5 0V3M8.5 3v5M8.5 11.5V21M17.5 21V3c-2.2 1.2-3.5 4-3.5 7.5 0 2 1.2 3.5 3.5 3.5"/></svg>`,
+  };
   function mondayOf(date) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
   function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  const shortDate = (d) => `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
   function weekRangeText(monday) {
     const sunday = addDays(monday, 6);
     if (monday.getMonth() === sunday.getMonth()) return `${monday.getDate()}–${sunday.getDate()} ${MONTHS[monday.getMonth()]}`;
-    return `${monday.getDate()} ${MONTHS[monday.getMonth()].slice(0,3)} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()].slice(0,3)}`;
+    return `${shortDate(monday)} – ${shortDate(sunday)}`;
   }
   function siteOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } }
   function titleFromUrl(url) {
@@ -563,8 +777,24 @@
   function normalizeUrl(v) { v = (v || "").trim(); if (!v) return ""; if (!/^https?:\/\//i.test(v)) v = "https://" + v; try { return new URL(v).toString(); } catch { return null; } }
   function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
   function newId() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  // Same as dishKeyOf in server.js: a rating belongs to the dish, so it follows it from week to week.
+  const normTitle = (t) => String(t || "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+  const dishKey = (x) => (x.url ? recipeId(x.url) : "t:" + normTitle(x.title));
+  const initial = (s) => (String(s || "").trim()[0] || "?").toUpperCase();
+  const HUES = [340, 200, 24, 268, 150, 300, 45, 182];
+  const hueOf = (id) => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; };
+  const store = (k, v) => { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
+  const recall = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+
   let toastTimer;
-  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2400); }
+  function toast(msg, action) {
+    const t = $("#toast");
+    t.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button type="button">${esc(action.label)}</button>` : "");
+    if (action) t.querySelector("button").onclick = () => { t.classList.remove("show"); action.run(); };
+    t.classList.toggle("actionable", !!action);
+    t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), action ? 6500 : 2400);
+  }
 
   // ---------- talking to the server ----------
   async function call(method, path, body) {
@@ -574,202 +804,246 @@
     if (!res.ok) { const e = new Error(data.error || "Something went wrong. Please try again."); e.status = res.status; throw e; }
     return data;
   }
-  const store = {
-    setMeal: (id, data) => call("PUT", `/api/meals/${id}`, data).then(loadWeek),
-    patchMeal: (id, patch) => call("PATCH", `/api/meals/${id}`, patch).then(loadWeek),
-    deleteMeal: (id) => call("DELETE", `/api/meals/${id}`).then(loadWeek),
-    setRecipe: (id, data) => call("PUT", `/api/recipes/${id}`, data).then(loadRecipes).then(loadShared),
-    deleteRecipe: (id) => call("DELETE", `/api/recipes/${id}`).then(loadRecipes).then(loadShared),
-  };
 
   // ---------- state ----------
-  let user = null;
+  let user = null, kids = [];
   let weekStart = mondayOf(new Date());
-  let meals = [], recipes = [], shared = [];
-  let editing = null, loadingWeek = true;
+  let meals = [], recipes = [], shared = [], ratings = {};
+  let loadingWeek = true;
+  let boxFilter = "all";
+
   async function loadWeek() {
     const wk = isoDate(weekStart);
     try { const d = await call("GET", `/api/meals?week=${wk}`); if (isoDate(weekStart) !== wk) return; meals = d.meals; loadingWeek = false; }
-    catch (e) { console.error(e); setStatus(false, "Couldn't load this week"); }
-    render();
+    catch (e) { console.error(e); toast("Couldn't load this week. Try again."); }
+    renderWeek();
   }
   async function loadRecipes() {
-    try { const d = await call("GET", "/api/recipes"); recipes = d.recipes; } catch (e) { console.error(e); }
+    try { recipes = (await call("GET", "/api/recipes")).recipes; } catch (e) { console.error(e); }
     renderRecipes(); renderDays();
   }
   async function loadShared() {
-    try { const d = await call("GET", "/api/shared"); shared = d.recipes.filter((r) => !r.mine); } catch (e) { console.error(e); }
+    try { shared = (await call("GET", "/api/shared")).recipes.filter((r) => !r.mine); } catch (e) { console.error(e); }
     renderShared();
   }
-  function setStatus(live, text) { const s = $("#status"); s.classList.toggle("live", live); s.querySelector("span:last-child").textContent = text; }
+  async function loadRatings() {
+    try {
+      const next = {};
+      for (const r of (await call("GET", "/api/ratings")).ratings) (next[r.dishKey] ||= {})[r.kidId] = r.rating;
+      ratings = next;
+    } catch (e) { console.error(e); }
+    refreshAll();
+  }
+  function refreshAll() { renderDays(); renderRecipes(); renderShared(); if (sheet.open) renderSheetKids(); }
 
-  // ---------- rendering ----------
-  function render() { renderWeekBar(); renderDays(); renderRecipes(); renderShared(); }
+  // ---------- kids & ratings ----------
+  const FACES = [
+    { v: 1, cls: "love", e: "😋", label: "Loves it", all: "The kids love it" },
+    { v: 0, cls: "ok", e: "😐", label: "It's OK", all: "The kids think it's OK" },
+    { v: -1, cls: "no", e: "😖", label: "Not a fan", all: "The kids aren't fans" },
+  ];
+  const faceOf = (v) => FACES.find((f) => f.v === v);
+  const raters = () => (kids.length ? kids : [{ id: "_", name: "The kids" }]);
+  function ratingsFor(key) { const r = ratings[key] || {}; return raters().filter((k) => k.id in r).map((k) => ({ kid: k, v: r[k.id] })); }
+  function verdict(key) {
+    const rs = ratingsFor(key);
+    if (!rs.length) return "new";
+    if (rs.some((x) => x.v === -1)) return "nope";
+    return rs.some((x) => x.v === 1) ? "fav" : "ok";
+  }
+  const favScore = (key) => ratingsFor(key).reduce((s, x) => s + (x.v === 1 ? 2 : x.v === 0 ? 0.5 : -3), 0);
+  function facesMini(key) {
+    return ratingsFor(key).map(({ kid, v }) => `<span class="kf" title="${esc(kid.name)}: ${faceOf(v).label}">${faceOf(v).e}${kids.length > 1 ? `<b>${esc(initial(kid.name))}</b>` : ""}</span>`).join("");
+  }
+  function kidLine(key) {
+    const rs = ratingsFor(key); if (!rs.length) return "";
+    if (!kids.length) { const f = faceOf(rs[0].v); return `<div class="kidline"><span>${f.e} ${f.all}</span></div>`; }
+    return `<div class="kidline">${rs.map(({ kid, v }) => `<span title="${esc(kid.name)}: ${faceOf(v).label}">${faceOf(v).e} ${esc(kid.name)}</span>`).join("")}</div>`;
+  }
+  async function setRating(key, kidId, v, title) {
+    const cur = ratings[key]?.[kidId];
+    const next = cur === v ? null : v; // tapping the chosen face again clears it
+    ratings[key] = { ...(ratings[key] || {}) };
+    if (next === null) delete ratings[key][kidId]; else ratings[key][kidId] = next;
+    refreshAll();
+    try { await call("PUT", "/api/ratings", { dishKey: key, kidId, rating: next, title }); }
+    catch (e) { console.error(e); toast(e.message || "Couldn't save that. Try again."); loadRatings(); }
+  }
+  function updateCallout() { $("#kidsCallout").hidden = kids.length > 0 || recall("wt-kids-tip") === "hidden"; }
+  $("#calloutX").addEventListener("click", () => { store("wt-kids-tip", "hidden"); updateCallout(); });
+  $("#calloutKids").addEventListener("click", () => openSettings(true));
+
+  // ---------- views ----------
+  function setView(v) {
+    const view = ["week", "recipes", "shared"].includes(v) ? v : "week";
+    for (const s of $$("[data-view-panel]")) s.hidden = s.dataset.viewPanel !== view;
+    for (const t of $$(".tab")) { if (t.dataset.tab === view) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); }
+  }
+  window.addEventListener("hashchange", () => { setView(location.hash.slice(1)); window.scrollTo(0, 0); });
+
+  // ---------- week ----------
+  function renderWeek() { renderWeekBar(); renderDays(); }
   function renderWeekBar() {
     const diff = Math.round((weekStart - mondayOf(new Date())) / 864e5 / 7);
     $("#weekLabel").textContent = diff === 0 ? "This week" : diff === 1 ? "Next week" : diff === -1 ? "Last week" : "Week of";
     $("#weekRange").textContent = weekRangeText(weekStart);
     $("#todayBtn").hidden = diff === 0;
     const n = meals.length, cooked = meals.filter((m) => m.cooked).length;
-    $("#counts").textContent = loadingWeek ? "" : n === 0 ? "Nothing planned yet" : `${n} meal${n === 1 ? "" : "s"} planned${cooked ? `, ${cooked} cooked` : ""}`;
+    $("#counts").textContent = loadingWeek || n === 0 ? "" : `${n} meal${n === 1 ? "" : "s"} planned${cooked ? ` · ${cooked} cooked` : ""}`;
   }
-  function savedFor(m) { if (!m.url) return null; const r = recipes.find((x) => x.id === recipeId(m.url)); return r && (r.copyText || r.hasImage) ? r : null; }
+  function boxFor(m) {
+    if (m.url) return recipes.find((r) => r.id === recipeId(m.url)) || null;
+    const t = normTitle(m.title);
+    return recipes.find((r) => !r.url && normTitle(r.title) === t) || null;
+  }
   const imgSrc = (r) => (r.ownerId ? `/api/shared/${encodeURIComponent(r.ownerId)}/${encodeURIComponent(r.id)}/image` : `/api/recipes/${encodeURIComponent(r.id)}/image`) + `?v=${encodeURIComponent((r.imageUrl || "").slice(-24))}`;
-  function titleHtml(text, saved, url) {
-    if (saved) return `<button type="button" data-view="${esc(saved.id)}">${esc(text)}</button>`;
-    if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
-    return esc(text);
-  }
   function renderDays() {
     const todayIso = isoDate(new Date());
     const sorted = [...meals].sort((a, b) => (SLOT_ORDER[a.slot] ?? 9) - (SLOT_ORDER[b.slot] ?? 9) || (a.createdAt || 0) - (b.createdAt || 0));
     let html = "";
     for (let i = 0; i < 7; i++) {
-      const d = addDays(weekStart, i), iso = isoDate(d);
-      const dayMeals = sorted.filter((m) => m.dayIndex === i);
-      html += `<article class="day${iso === todayIso ? " today" : ""}" data-day="${i}">
-        <header class="dayhead"><span class="dayname">${DAY_NAMES[i]}</span><span class="daydate">${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}</span></header>
-        <div class="daybody">${dayMeals.map(mealCard).join("")}</div>
-        <div class="dayfoot"><button class="addhere" data-add="${i}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button></div>
+      const d = addDays(weekStart, i);
+      html += `<article class="day${isoDate(d) === todayIso ? " today" : ""}" data-day="${i}">
+        <header class="dayhead"><span class="dayname">${DAY_NAMES[i]}</span><span class="daydate">${shortDate(d)}</span></header>
+        <div class="daybody">${sorted.filter((m) => m.dayIndex === i).map(mealCard).join("")}</div>
+        <div class="dayfoot"><button class="addhere" data-add="${i}" aria-label="Add a meal on ${DAY_NAMES[i]}">${ICON.plus}Add</button></div>
       </article>`;
     }
-    if (meals.length === 0 && !loadingWeek) {
-      html = `<div class="empty"><h2>An empty week, full of possibilities</h2><p>Add your first recipe and it will appear on its day here. Anything you add is also saved in your recipe box below.</p><button class="btn primary" data-add="0">Add a recipe</button></div>` + html;
-    }
     $("#days").innerHTML = html;
+    $("#weekEmpty").hidden = !(meals.length === 0 && !loadingWeek);
   }
   function mealCard(m) {
-    const site = m.url ? siteOf(m.url) : "";
-    const copy = savedFor(m);
-    return `<div class="meal${m.cooked ? " cooked" : ""}" data-id="${esc(m.id)}">
-      <span class="slot ${esc(m.slot || "dinner")}">${SLOT_LABEL[m.slot] || "Dinner"}</span>
-      ${copy?.hasImage ? `<img class="thumb" src="${imgSrc(copy)}" alt="" loading="lazy" data-view="${esc(copy.id)}" style="cursor:pointer">` : ""}
-      <h3 class="mealtitle">${titleHtml(m.title, copy, m.url)}</h3>
-      ${site ? `<span class="site"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg>${esc(site)}</span>` : ""}
-      ${m.notes ? `<p class="note">${esc(m.notes)}</p>` : ""}
-      <div class="mealactions">
-        ${m.url ? `<a class="btn small open" href="${esc(m.url)}" target="_blank" rel="noopener">Open recipe ↗</a>` : ""}
-        ${copy ? `<button class="btn small copybtn" data-view="${esc(copy.id)}">View here</button>` : ""}
-        <button class="btn small cookbtn${m.cooked ? " on" : ""}" data-cook="${esc(m.id)}">${m.cooked ? "✓ Cooked" : "Mark cooked"}</button>
-        <button class="btn small" data-edit="${esc(m.id)}">Edit</button>
+    const r = boxFor(m), key = dishKey(m), rated = ratingsFor(key).length;
+    return `<div class="meal${m.cooked ? " cooked" : ""}" draggable="true" data-meal="${esc(m.id)}">
+      ${r?.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" draggable="false">` : ""}
+      <div class="mbody">
+        <span class="slot ${esc(m.slot || "dinner")}">${SLOT_LABEL[m.slot] || "Dinner"}</span>
+        <h3 class="mealtitle"><button type="button" data-open-meal="${esc(m.id)}">${esc(m.title)}</button></h3>
+        <div class="mfoot">
+          <button type="button" class="tick${m.cooked ? " on" : ""}" data-cook="${esc(m.id)}" aria-pressed="${m.cooked}" aria-label="${m.cooked ? "Cooked" : "Mark as cooked"}" title="${m.cooked ? "Cooked" : "Mark as cooked"}">${ICON.check}</button>
+          ${rated ? `<span class="kfs">${facesMini(key)}</span>` : m.cooked ? `<button type="button" class="ratebtn" data-rate="${esc(m.id)}">Kids liked it?</button>` : ""}
+        </div>
       </div>
     </div>`;
   }
-  function renderRecipes() {
-    const q = ($("#search").value || "").trim().toLowerCase();
-    const list = [...recipes]
-      .filter((r) => !q || (r.title || "").toLowerCase().includes(q) || (r.site || "").toLowerCase().includes(q) || (r.notes || "").toLowerCase().includes(q) || (r.copyText || "").toLowerCase().includes(q))
-      .sort((a, b) => (b.lastPlanned || b.addedAt || 0) - (a.lastPlanned || a.addedAt || 0));
-    const wrap = $("#recipes");
-    if (list.length === 0) { updateShareAllBtn(); wrap.innerHTML = `<p class="boxempty">${q ? "No recipes match that search." : "Nothing saved yet. Press “Add to recipe box”, or plan a recipe on a day and it lands here too."}</p>`; return; }
-    updateShareAllBtn();
-    wrap.innerHTML = list.map((r) => `<div class="recipe" data-rid="${esc(r.id)}">
-      ${r.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" data-view="${esc(r.id)}" style="cursor:pointer">` : ""}
-      <h3 class="mealtitle">${titleHtml(r.title, (r.copyText || r.hasImage) ? r : null, r.url)}</h3>
-      ${r.url ? `<span class="site">${esc(r.site || siteOf(r.url))}</span>` : ""}
-      ${r.notes ? `<p class="note">${esc(r.notes)}</p>` : ""}
-      <span class="meta">${r.timesPlanned ? `Planned ${r.timesPlanned} time${r.timesPlanned === 1 ? "" : "s"}` : "Not planned yet"} · <span class="badge${r.shared ? "" : " off"}">${r.shared ? "Shared" : "Private"}</span></span>
-      <div class="actions">
-        <button class="btn small primary" data-plan="${esc(r.id)}">Plan this week</button>
-        ${(r.copyText || r.hasImage) ? `<button class="btn small copybtn" data-view="${esc(r.id)}">View here</button>` : ""}
-        ${r.url ? `<a class="btn small" href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>` : ""}
-        <button class="btn small ghost" data-redit="${esc(r.id)}">Edit</button>
-      </div>
-    </div>`).join("");
+  async function toggleCooked(id) {
+    const m = meals.find((x) => x.id === id); if (!m) return;
+    const next = !m.cooked;
+    m.cooked = next; renderWeek(); if (sheet.open) renderSheet();
+    try { await call("PATCH", `/api/meals/${id}`, { cooked: next }); }
+    catch (e) { console.error(e); m.cooked = !next; renderWeek(); if (sheet.open) renderSheet(); toast("Couldn't update. Try again."); return; }
+    if (next && !ratingsFor(dishKey(m)).length) {
+      if (sheet.open) flashKids();
+      else toast("Marked as cooked", { label: "Did the kids like it?", run: () => openMealSheet(id, true) });
+    }
+  }
+  async function moveMeal(id, dayIndex) {
+    const m = meals.find((x) => x.id === id); if (!m || m.dayIndex === dayIndex) return;
+    const prev = m.dayIndex; m.dayIndex = dayIndex; renderDays();
+    try { await call("PATCH", `/api/meals/${id}`, { dayIndex }); toast(`Moved to ${DAY_NAMES[dayIndex]}`); }
+    catch (e) { console.error(e); m.dayIndex = prev; renderDays(); toast("Couldn't move it. Try again."); }
   }
 
-  function renderShared() {
-    const q = ($("#sharedSearch").value || "").trim().toLowerCase();
-    const list = shared.filter((r) => !q || [r.title, r.site, r.notes, r.copyText, r.ownerName].some((v) => (v || "").toLowerCase().includes(q)));
-    const wrap = $("#shared");
-    if (list.length === 0) { wrap.innerHTML = `<p class="boxempty">${q ? "No shared recipes match that search." : "Nothing shared by other members yet. Anything they add with sharing on will appear here."}</p>`; return; }
-    wrap.innerHTML = list.map((r) => `<div class="recipe" data-sid="${esc(r.ownerId)}/${esc(r.id)}">
-      ${r.hasImage ? `<img class="thumb" src="${imgSrc(r)}" alt="" loading="lazy" data-sview="${esc(r.ownerId)}/${esc(r.id)}" style="cursor:pointer">` : ""}
-      <h3 class="mealtitle">${(r.copyText || r.hasImage) ? `<button type="button" data-sview="${esc(r.ownerId)}/${esc(r.id)}">${esc(r.title)}</button>` : r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</h3>
-      ${r.url ? `<span class="site">${esc(r.site || siteOf(r.url))}</span>` : ""}
-      <span class="owner">Shared by ${esc(r.ownerName)}</span>
-      <div class="actions">
-        <button class="btn small primary" data-splan="${esc(r.ownerId)}/${esc(r.id)}">Plan this week</button>
-        <button class="btn small" data-scopy="${esc(r.ownerId)}/${esc(r.id)}">Add to my box</button>
-        ${r.url ? `<a class="btn small ghost" href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>` : ""}
+  // Drag a meal onto another day.
+  let dragId = null;
+  const daysEl = $("#days");
+  const clearDrop = () => $$(".day.dropping").forEach((d) => d.classList.remove("dropping"));
+  daysEl.addEventListener("dragstart", (e) => {
+    const c = e.target.closest?.(".meal"); if (!c) return;
+    dragId = c.dataset.meal; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId);
+    requestAnimationFrame(() => c.classList.add("dragging"));
+  });
+  daysEl.addEventListener("dragend", () => { $$(".meal.dragging").forEach((c) => c.classList.remove("dragging")); clearDrop(); dragId = null; });
+  daysEl.addEventListener("dragover", (e) => {
+    if (!dragId) return; const day = e.target.closest(".day"); if (!day) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    if (!day.classList.contains("dropping")) { clearDrop(); day.classList.add("dropping"); }
+  });
+  daysEl.addEventListener("drop", (e) => {
+    const day = e.target.closest(".day"); if (!day || !dragId) return;
+    e.preventDefault(); const id = dragId; dragId = null; clearDrop(); moveMeal(id, Number(day.dataset.day));
+  });
+
+  // ---------- recipe box ----------
+  const matchQ = (q) => (r) => !q || [r.title, r.site, r.notes, r.copyText, r.ownerName].some((v) => (v || "").toLowerCase().includes(q));
+  function recipeCard(r, isShared) {
+    const key = dishKey(r), sid = isShared ? `${r.ownerId}/${r.id}` : r.id;
+    const open = isShared ? `data-sopen="${esc(sid)}"` : `data-ropen="${esc(r.id)}"`;
+    return `<article class="rcard">
+      <button type="button" class="rimgbtn" ${open} tabindex="-1" aria-hidden="true">
+        ${r.hasImage ? `<img class="rimg" src="${imgSrc(r)}" alt="" loading="lazy">` : `<span class="rimg ph">${ICON.fork}</span>`}
+        ${verdict(key) === "fav" ? `<span class="favtag">😋 Kid favourite</span>` : ""}
+      </button>
+      <div class="rbody">
+        <h3 class="rtitle"><button type="button" ${open}>${esc(r.title)}</button></h3>
+        <span class="site">${r.url ? esc(r.site || siteOf(r.url)) : "Your own recipe"}</span>
+        ${kidLine(key)}
+        ${r.notes ? `<p class="note">${esc(r.notes)}</p>` : ""}
+        <span class="meta">${isShared ? `Shared by ${esc(r.ownerName)}` : `${r.timesPlanned ? `Planned ${r.timesPlanned} time${r.timesPlanned === 1 ? "" : "s"}` : "Not planned yet"} · ${r.shared ? "Shared" : "Private"}`}</span>
       </div>
-    </div>`).join("");
+      <div class="ractions">
+        <button type="button" class="btn small primary" ${isShared ? `data-splan="${esc(sid)}"` : `data-plan="${esc(r.id)}"`}>${ICON.plus}Plan it</button>
+        ${isShared ? `<button type="button" class="btn small" data-scopy="${esc(sid)}">Add to my box</button>` : `<button type="button" class="btn small ghost" data-redit="${esc(r.id)}">Edit</button>`}
+      </div>
+    </article>`;
   }
-  function findShared(key) { const [o, id] = key.split("/"); return shared.find((r) => r.ownerId === o && r.id === id); }
-  async function copyShared(r) {
-    const d = await call("POST", `/api/shared/${encodeURIComponent(r.ownerId)}/${encodeURIComponent(r.id)}/copy`);
-    await loadRecipes();
-    return d.recipe;
-  }
-  function updateShareAllBtn() {
+  const SORTS = {
+    recent: (a, b) => (b.lastPlanned || b.addedAt || 0) - (a.lastPlanned || a.addedAt || 0),
+    fav: (a, b) => favScore(dishKey(b)) - favScore(dishKey(a)) || (b.timesPlanned || 0) - (a.timesPlanned || 0),
+    az: (a, b) => a.title.localeCompare(b.title),
+    new: (a, b) => (b.addedAt || 0) - (a.addedAt || 0),
+  };
+  function renderRecipes() {
+    const q = ($("#search").value || "").trim().toLowerCase();
+    const base = recipes.filter(matchQ(q));
+    const counts = { all: base.length, fav: 0, new: 0, nope: 0 };
+    for (const r of base) { const v = verdict(dishKey(r)); if (v in counts) counts[v]++; }
+    const chip = (k, label) => `<button type="button" class="chip" data-filter="${k}" aria-pressed="${boxFilter === k}">${label} <span class="n">${counts[k]}</span></button>`;
+    $("#chips").innerHTML = chip("all", "All") + chip("fav", "😋 Kid favourites") + chip("new", "✨ Not rated yet") + chip("nope", "😖 Not a hit");
+    const list = base.filter((r) => boxFilter === "all" || verdict(dishKey(r)) === boxFilter).sort(SORTS[$("#boxSort").value] || SORTS.recent);
     const allShared = recipes.length > 0 && recipes.every((r) => r.shared);
     $("#shareAllBtn").textContent = allShared ? "Stop sharing all" : "Share all";
     $("#shareAllBtn").dataset.next = allShared ? "0" : "1";
+    $("#shareAllBtn").hidden = recipes.length === 0;
+    const empty = recipes.length === 0 ? "Nothing saved yet. Press “Add a recipe”, or plan a meal with a link and it lands here too."
+      : q ? "No recipes match that search."
+      : boxFilter === "fav" ? "No kid favourites yet. Open a recipe and tap 😋 when the kids love it."
+      : boxFilter === "nope" ? "Nothing the kids dislike. Nice!" : "Every recipe here has been rated.";
+    $("#recipes").innerHTML = list.length ? list.map((r) => recipeCard(r, false)).join("") : `<p class="boxempty">${empty}</p>`;
   }
+  function renderShared() {
+    const q = ($("#sharedSearch").value || "").trim().toLowerCase();
+    const list = shared.filter(matchQ(q));
+    $("#shared").innerHTML = list.length ? list.map((r) => recipeCard(r, true)).join("")
+      : `<p class="boxempty">${q ? "No shared recipes match that search." : "Nothing shared by other members yet. Anything they add with sharing on will appear here."}</p>`;
+  }
+  $("#chips").addEventListener("click", (e) => { const c = e.target.closest("[data-filter]"); if (!c) return; boxFilter = c.dataset.filter; renderRecipes(); });
+  $("#boxSort").addEventListener("change", () => { store("wt-sort", $("#boxSort").value); renderRecipes(); });
+  if (SORTS[recall("wt-sort")]) $("#boxSort").value = recall("wt-sort");
+  $("#search").addEventListener("input", renderRecipes);
+  $("#sharedSearch").addEventListener("input", renderShared);
   $("#shareAllBtn").addEventListener("click", async () => {
     const next = $("#shareAllBtn").dataset.next === "1";
     if (!next && !confirm("Stop sharing every recipe in your box? Other members will no longer see them.")) return;
     try { await call("POST", "/api/recipes/share-all", { shared: next }); await loadRecipes(); await loadShared(); toast(next ? "All your recipes are shared" : "Your recipes are private now"); }
     catch (e) { console.error(e); toast("Couldn't change sharing. Try again."); }
   });
-  $("#sharedSearch").addEventListener("input", renderShared);
-
-  // ---------- connection keys (MCP) ----------
-  let keys = [];
-  async function loadKeys() {
-    try { keys = (await call("GET", "/api/tokens")).tokens; } catch (e) { console.error(e); keys = []; }
-    const wrap = $("#keys");
-    if (!keys.length) { wrap.innerHTML = `<p class="boxempty">No connection keys yet.</p>`; return; }
-    const when = (t) => t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "never";
-    wrap.innerHTML = keys.map((k) => `<div class="key"><span class="meta"><strong>${esc(k.name)}</strong> · created ${when(k.createdAt)} · last used ${when(k.lastUsed)}</span><button class="btn small ghost" data-delkey="${esc(k.id)}">Remove</button></div>`).join("");
+  function findShared(key) { const [o, id] = key.split("/"); return shared.find((r) => r.ownerId === o && r.id === id); }
+  async function copyShared(r) {
+    const d = await call("POST", `/api/shared/${encodeURIComponent(r.ownerId)}/${encodeURIComponent(r.id)}/copy`);
+    await loadRecipes();
+    return d.recipe;
   }
-  const kdlg = $("#kdlg");
-  $("#newKeyBtn").addEventListener("click", async () => {
-    const name = prompt("Give this key a name, for example the computer it will be used on:", "Claude Code");
-    if (name === null) return;
-    try {
-      const d = await call("POST", "/api/tokens", { name });
-      const cmd = `claude mcp add --transport http weekly-table ${location.origin}/mcp --header "Authorization: Bearer ${d.token}"`;
-      $("#kKey").textContent = d.token; $("#kCmd").textContent = cmd;
-      $("#kCopyKey").onclick = () => navigator.clipboard.writeText(d.token).then(() => toast("Key copied"));
-      $("#kCopyCmd").onclick = () => navigator.clipboard.writeText(cmd).then(() => toast("Command copied"));
-      kdlg.showModal(); loadKeys();
-    } catch (e) { console.error(e); toast(e.message); }
-  });
-  $("#kClose").addEventListener("click", () => kdlg.close());
-  document.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-delkey]"); if (!t) return;
-    if (!confirm("Remove this connection key? Anything using it will stop working.")) return;
-    try { await call("DELETE", `/api/tokens/${t.dataset.delkey}`); loadKeys(); toast("Key removed"); } catch (ex) { console.error(ex); toast(ex.message); }
-  });
 
-  // ---------- saved copies ----------
-  function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl, imageEl }) {
-    let timer = null, lastUrl = "";
-    const st = (msg, cls = "") => { statusEl.textContent = msg; statusEl.className = "copystatus " + cls; };
-    async function run(force = false) {
-      const url = normalizeUrl(urlEl.value); if (!url) { st(""); return; }
-      if (!force && (copyEl.value.trim() || url === lastUrl)) return;
-      lastUrl = url;
-      st("Fetching the recipe…", "busy"); btnEl.disabled = true;
-      try {
-        const { recipe: r } = await call("POST", "/api/fetch-recipe", { url });
-        if (normalizeUrl(urlEl.value) !== url) return;
-        if (!r) { st("Couldn't read this website automatically. Paste the recipe in if you want a copy."); return; }
-        if (r.image) imageEl.value = r.image;
-        if (!r.text) { st(r.image ? "Saved the picture, but couldn't read the recipe text. Paste it in if you want a copy." : "Couldn't read this website automatically. Paste the recipe in if you want a copy."); return; }
-        copyEl.value = r.text;
-        if (r.title && (!titleEl.value.trim() || titleEl.value.trim() === titleFromUrl(url))) titleEl.value = r.title;
-        st(r.structured ? `Saved a copy: ${r.ingredients} ingredients, ${r.steps} steps` : "Saved the page text. Tidy it up if you like.", "ok");
-      } catch (e) { console.error(e); st("Couldn't read this website automatically. Paste the recipe in if you want a copy."); }
-      finally { btnEl.disabled = false; }
-    }
-    urlEl.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => run(false), 700); });
-    btnEl.addEventListener("click", () => run(true));
-    return { reset: () => { clearTimeout(timer); lastUrl = ""; st(""); btnEl.disabled = false; } };
+  // ---------- the sheet: one meal or recipe, opened ----------
+  const sheet = $("#sheet");
+  let sheetCtx = null; // { kind: "meal", mealId } | { kind: "mine", id } | { kind: "shared", sid }
+  function sheetData() {
+    if (!sheetCtx) return null;
+    if (sheetCtx.kind === "meal") { const m = meals.find((x) => x.id === sheetCtx.mealId); return m ? { meal: m, recipe: boxFor(m), title: m.title, url: m.url } : null; }
+    const r = sheetCtx.kind === "mine" ? recipes.find((x) => x.id === sheetCtx.id) : findShared(sheetCtx.sid);
+    return r ? { recipe: r, title: r.title, url: r.url } : null;
   }
-  const vdlg = $("#vdlg");
   function renderCopy(text) {
     const lines = String(text || "").split("\n"); let html = "", list = null, ing = 0;
     const close = () => { if (list) { html += `</${list}>`; list = null; } };
@@ -784,121 +1058,276 @@
     close(); return html;
   }
   let tickKey = "";
-  function loadTicks() { try { return JSON.parse(localStorage.getItem(tickKey) || "[]"); } catch { return []; } }
-  function saveTicks(t) { try { if (t.length) localStorage.setItem(tickKey, JSON.stringify(t)); else localStorage.removeItem(tickKey); } catch {} }
+  const loadTicks = () => { try { return JSON.parse(recall(tickKey) || "[]"); } catch { return []; } };
+  const saveTicks = (t) => store(tickKey, t.length ? JSON.stringify(t) : undefined);
   function applyTicks() {
+    const box = $("#sText"); if (!box) return;
     const ticked = new Set(loadTicks());
-    for (const box of $("#vText").querySelectorAll("input[data-ing]")) { box.checked = ticked.has(Number(box.dataset.ing)); box.closest(".ing").classList.toggle("done", box.checked); }
-    $("#vUntick").hidden = ticked.size === 0;
+    for (const b of box.querySelectorAll("input[data-ing]")) { b.checked = ticked.has(Number(b.dataset.ing)); b.closest(".ing").classList.toggle("done", b.checked); }
+    const u = $("#sUntick"); if (u) u.hidden = ticked.size === 0;
   }
-  $("#vText").addEventListener("change", (e) => {
-    const box = e.target.closest("input[data-ing]"); if (!box) return;
-    const t = new Set(loadTicks()); box.checked ? t.add(Number(box.dataset.ing)) : t.delete(Number(box.dataset.ing));
+  function renderSheet() {
+    const d = sheetData(); if (!d) { sheet.close(); return; }
+    const { meal, recipe, title, url } = d;
+    const hero = $("#sHero"); hero.hidden = !recipe?.hasImage; if (recipe?.hasImage) hero.src = imgSrc(recipe);
+    let eyebrow = "";
+    if (meal) eyebrow = `${DAY_NAMES[meal.dayIndex]} ${shortDate(addDays(parseIso(meal.week), meal.dayIndex))} · ${SLOT_LABEL[meal.slot] || "Dinner"}`;
+    else if (sheetCtx.kind === "shared") eyebrow = `Shared by ${recipe.ownerName}`;
+    else eyebrow = recipe.timesPlanned ? `Recipe box · planned ${recipe.timesPlanned} time${recipe.timesPlanned === 1 ? "" : "s"}` : "Recipe box";
+    $("#sEyebrow").textContent = eyebrow;
+    $("#sTitle").textContent = title;
+    const site = $("#sSite"); site.hidden = !url; if (url) { site.href = url; site.textContent = `${siteOf(url)} ↗`; }
+    const ext = url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Open original ↗</a>` : "";
+    $("#sActions").innerHTML = meal
+      ? `<button type="button" class="btn small cookbtn${meal.cooked ? " on" : ""}" data-scook aria-pressed="${meal.cooked}">${ICON.check}${meal.cooked ? "Cooked" : "Mark as cooked"}</button>${ext}<button type="button" class="btn small ghost" data-sedit>Edit or move</button>`
+      : sheetCtx.kind === "mine"
+        ? `<button type="button" class="btn small primary" data-splanit>${ICON.plus}Plan it</button>${ext}<button type="button" class="btn small ghost" data-sedit>Edit</button>`
+        : `<button type="button" class="btn small primary" data-splanit>${ICON.plus}Plan it</button><button type="button" class="btn small" data-scopyit>Add to my box</button>${ext}`;
+    renderSheetKids();
+    const notes = [meal?.notes, recipe?.notes].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join("\n\n");
+    $("#sNotes").hidden = !notes; $("#sNotes").textContent = notes;
+    tickKey = recipe ? `wt-ticks:${recipe.ownerId || "me"}:${recipe.id}` : "";
+    $("#sRecipe").innerHTML = recipe?.copyText
+      ? `<div class="recipehead"><h3>Recipe</h3><button type="button" class="linkbtn" id="sUntick" hidden>Untick all</button></div><div class="readertext" id="sText">${renderCopy(recipe.copyText)}</div>`
+      : `<p class="hint">${url ? "No saved copy of this recipe yet. Use “Open original”, or Edit and fetch it from the link." : "No recipe text saved. Edit to paste it in if you like."}</p>`;
+    applyTicks();
+  }
+  function renderSheetKids() {
+    const d = sheetData(); if (!d) return;
+    const key = dishKey(d), r = ratings[key] || {};
+    $("#sKidsTitle").textContent = d.meal?.cooked ? "Did the kids like it?" : "What do the kids think?";
+    $("#sKidsSetup").textContent = kids.length ? "Edit kids" : "Add your kids' names";
+    $("#sKids").innerHTML = raters().map((k) => `<div class="kidrow">
+      <span class="kidwho">${k.id === "_" ? "" : `<span class="kidav" style="--h:${hueOf(k.id)}" aria-hidden="true">${esc(initial(k.name))}</span>`}${esc(k.name)}</span>
+      <div class="faces" role="group" aria-label="${esc(k.name)}">${FACES.map((f) => `<button type="button" class="face ${f.cls}" aria-pressed="${r[k.id] === f.v}" data-face="${f.v}" data-kid="${esc(k.id)}"><span class="e" aria-hidden="true">${f.e}</span>${f.label}</button>`).join("")}</div>
+    </div>`).join("");
+  }
+  function flashKids() { const b = $("#sKidBox"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); b.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  function openSheet(ctx, focusKids = false) {
+    sheetCtx = ctx; renderSheet();
+    if (!sheet.open) sheet.showModal();
+    sheet.scrollTop = 0;
+    if (focusKids) setTimeout(flashKids, 80);
+  }
+  const openMealSheet = (id, focusKids) => openSheet({ kind: "meal", mealId: id }, focusKids);
+  sheet.addEventListener("close", () => { sheetCtx = null; });
+  sheet.addEventListener("change", (e) => {
+    const b = e.target.closest("input[data-ing]"); if (!b) return;
+    const t = new Set(loadTicks()); b.checked ? t.add(Number(b.dataset.ing)) : t.delete(Number(b.dataset.ing));
     saveTicks([...t]); applyTicks();
   });
-  $("#vUntick").addEventListener("click", () => { saveTicks([]); applyTicks(); });
-  function openReader(r) {
-    tickKey = `wt-ticks:${r.ownerId || "me"}:${r.id}`;
-    $("#vTitle").textContent = r.title; $("#vSite").textContent = r.site || siteOf(r.url) || "";
-    const img = $("#vImage"); img.hidden = !r.hasImage; if (r.hasImage) img.src = imgSrc(r);
-    $("#vText").innerHTML = r.copyText ? renderCopy(r.copyText) : `<p style="margin:0;color:var(--ink-soft)">No saved text for this recipe yet. Press Edit, then "Fetch from the link", or paste the recipe in.</p>`;
-    $("#vOpen").hidden = !r.url; if (r.url) $("#vOpen").href = r.url;
-    applyTicks();
-    vdlg.showModal();
-  }
-  $("#vClose").addEventListener("click", () => vdlg.close());
-  $("#vX").addEventListener("click", () => vdlg.close());
-  // Clicking outside a window (on the dimmed background) closes it. Escape works too.
-  for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+  sheet.addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-face],[data-scook],[data-sedit],[data-splanit],[data-scopyit],#sUntick,#sKidsSetup"); if (!t) return;
+    const d = sheetData(); if (!d) return;
+    if (t.dataset.face !== undefined) return setRating(dishKey(d), t.dataset.kid, Number(t.dataset.face), d.title);
+    if (t.id === "sUntick") { saveTicks([]); applyTicks(); return; }
+    if (t.id === "sKidsSetup") { sheet.close(); return openSettings(true); }
+    if (t.dataset.scook !== undefined) return toggleCooked(d.meal.id);
+    if (t.dataset.sedit !== undefined) { sheet.close(); return d.meal ? openForm({ meal: d.meal }) : openRecipeForm(d.recipe); }
+    if (t.dataset.splanit !== undefined) {
+      sheet.close();
+      if (sheetCtx?.kind === "shared" || d.recipe.ownerId) { try { openForm({ recipe: await copyShared(d.recipe) }); } catch (ex) { toast(ex.message); } }
+      else openForm({ recipe: d.recipe });
+      return;
+    }
+    if (t.dataset.scopyit !== undefined) { try { await copyShared(d.recipe); toast("Added to your recipe box"); } catch (ex) { toast(ex.message); } }
+  });
 
-  // ---------- meal form ----------
-  const dlg = $("#dlg");
-  function fillDayOptions() {
-    const sel = $("#fDay"); sel.innerHTML = "";
-    for (let i = 0; i < 7; i++) { const d = addDays(weekStart, i); const o = document.createElement("option"); o.value = i; o.textContent = `${DAY_NAMES[i]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`; sel.appendChild(o); }
+  // ---------- shopping list ----------
+  function ingredientsOf(text) {
+    const lines = String(text || "").split("\n").map((l) => l.trim());
+    const bare = (l) => l.replace(/[#*_:]/g, "").trim();
+    const start = lines.findIndex((l) => !/^[-*•]\s+/.test(l) && /^ingredients$/i.test(bare(l)));
+    if (start < 0) return [];
+    const out = [];
+    for (let i = start + 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (/^(method|instructions|directions|steps|preparation)$/i.test(bare(l)) || /^\d+[.)]\s+/.test(l)) break;
+      if (/^[-*•]\s+/.test(l)) out.push(l.replace(/^[-*•]\s+/, "").trim());
+    }
+    return out.filter(Boolean);
   }
-  const fCopyCtl = wireCopyField({ urlEl: $("#fUrl"), titleEl: $("#fTitle"), copyEl: $("#fCopy"), statusEl: $("#fCopyStatus"), btnEl: $("#fFetchBtn"), imageEl: $("#fImage") });
+  let shopKey = "", shopGroups = [];
+  const shopTicks = () => { try { return new Set(JSON.parse(recall(shopKey) || "[]")); } catch { return new Set(); } };
+  function openShop() {
+    shopKey = `wt-shop:${isoDate(weekStart)}`;
+    const order = meals.filter((m) => !m.cooked).sort((a, b) => a.dayIndex - b.dayIndex || (SLOT_ORDER[a.slot] ?? 9) - (SLOT_ORDER[b.slot] ?? 9));
+    const cookedCount = meals.length - order.length;
+    const groups = new Map(), missing = [];
+    for (const m of order) {
+      const key = dishKey(m);
+      if (groups.has(key)) { groups.get(key).days.push(m.dayIndex); continue; }
+      const ings = ingredientsOf(boxFor(m)?.copyText);
+      if (!ings.length) { if (!missing.includes(m.title)) missing.push(m.title); continue; }
+      groups.set(key, { key, title: m.title, days: [m.dayIndex], ings });
+    }
+    shopGroups = [...groups.values()];
+    const ticks = shopTicks();
+    $("#shopSub").textContent = !meals.length ? "Nothing planned this week yet."
+      : !order.length ? "Every meal this week is already cooked."
+      : `For the meals still to cook ${weekRangeText(weekStart)}${cookedCount ? ` (${cookedCount} already cooked, left out)` : ""}. Tick things off as you shop.`;
+    $("#shopBody").innerHTML = shopGroups.map((g) => `<div class="shopgroup readertext"><h4>${esc(g.title)} <small>${g.days.map((i) => DAY_NAMES[i].slice(0, 3)).join(", ")}</small></h4><ul>${g.ings.map((x, i) => {
+      const id = `${g.key}#${i}`; return `<li><label class="ing${ticks.has(id) ? " done" : ""}"><input type="checkbox" data-shop="${esc(id)}"${ticks.has(id) ? " checked" : ""}><span>${esc(x)}</span></label></li>`;
+    }).join("")}</ul></div>`).join("") + (missing.length ? `<p class="hint">No saved ingredients for ${missing.map((t) => `“${esc(t)}”`).join(", ")}. Check those recipes yourself.</p>` : "");
+    $("#shopCopy").hidden = $("#shopUntick").hidden = !shopGroups.length;
+    $("#shop").showModal();
+  }
+  $("#shopBtn").addEventListener("click", openShop);
+  $("#shopBody").addEventListener("change", (e) => {
+    const b = e.target.closest("[data-shop]"); if (!b) return;
+    const t = shopTicks(); b.checked ? t.add(b.dataset.shop) : t.delete(b.dataset.shop);
+    store(shopKey, t.size ? JSON.stringify([...t]) : undefined);
+    b.closest(".ing").classList.toggle("done", b.checked);
+  });
+  $("#shopUntick").addEventListener("click", () => { store(shopKey, undefined); $$("[data-shop]").forEach((b) => { b.checked = false; b.closest(".ing").classList.remove("done"); }); });
+  $("#shopCopy").addEventListener("click", () => {
+    const t = shopTicks();
+    const text = shopGroups.map((g) => { const left = g.ings.filter((_, i) => !t.has(`${g.key}#${i}`)); return left.length ? `${g.title}\n${left.map((x) => `- ${x}`).join("\n")}` : ""; }).filter(Boolean).join("\n\n");
+    if (!text) return toast("Everything is ticked off");
+    navigator.clipboard.writeText(text).then(() => toast("Shopping list copied"), () => toast("Couldn't copy. Try again."));
+  });
+
+  // ---------- fetching a saved copy from a link ----------
+  function wireCopyField({ urlEl, titleEl, copyEl, statusEl, btnEl, imageEl, hintEl }) {
+    let timer = null, lastUrl = "";
+    const st = (msg, cls = "") => { statusEl.textContent = msg; statusEl.className = "copystatus " + cls; hintEl.hidden = !!msg; };
+    async function run(force = false) {
+      const url = normalizeUrl(urlEl.value); if (!url) { st(""); return; }
+      if (!force && (copyEl.value.trim() || url === lastUrl)) return;
+      lastUrl = url;
+      st("Reading the recipe…", "busy"); btnEl.disabled = true;
+      try {
+        const { recipe: r } = await call("POST", "/api/fetch-recipe", { url });
+        if (normalizeUrl(urlEl.value) !== url) return;
+        if (!r) { st("Couldn't read this website automatically. You can paste the recipe in below."); return; }
+        if (r.image) imageEl.value = r.image;
+        if (!r.text) { st(r.image ? "Saved the picture, but couldn't read the recipe text." : "Couldn't read this website automatically."); return; }
+        copyEl.value = r.text;
+        if (r.title && (!titleEl.value.trim() || titleEl.value.trim() === titleFromUrl(url))) titleEl.value = r.title;
+        st(r.structured ? `✓ Saved a copy: ${r.ingredients} ingredients, ${r.steps} steps` : "✓ Saved the page text. Tidy it up if you like.", "ok");
+      } catch (e) { console.error(e); st("Couldn't read this website automatically. You can paste the recipe in below."); }
+      finally { btnEl.disabled = false; }
+    }
+    urlEl.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => run(false), 700); });
+    btnEl.addEventListener("click", () => run(true));
+    return { reset: () => { clearTimeout(timer); lastUrl = ""; st(""); btnEl.disabled = false; }, run };
+  }
+
+  // ---------- add / edit a meal ----------
+  const dlg = $("#dlg");
+  let editing = null, picked = null;
+  const fCopyCtl = wireCopyField({ urlEl: $("#fUrl"), titleEl: $("#fTitle"), copyEl: $("#fCopy"), statusEl: $("#fCopyStatus"), btnEl: $("#fFetchBtn"), imageEl: $("#fImage"), hintEl: $("#urlHint") });
+  function fillDayOptions() {
+    $("#fDay").innerHTML = DAY_NAMES.map((n, i) => `<option value="${i}">${n} ${shortDate(addDays(weekStart, i))}</option>`).join("");
+  }
+  function renderPicks() {
+    const q = ($("#pickSearch").value || "").trim().toLowerCase();
+    const list = recipes.filter(matchQ(q))
+      .sort((a, b) => favScore(dishKey(b)) - favScore(dishKey(a)) || (b.timesPlanned || 0) - (a.timesPlanned || 0) || (b.addedAt || 0) - (a.addedAt || 0))
+      .slice(0, q ? 24 : 12);
+    $("#picks").innerHTML = list.length ? list.map((r) => {
+      const v = verdict(dishKey(r)), f = v === "fav" ? "😋" : v === "nope" ? "😖" : "";
+      return `<button type="button" class="pick${picked === r.id ? " on" : ""}" data-pick="${esc(r.id)}" aria-pressed="${picked === r.id}">${r.hasImage ? `<img src="${imgSrc(r)}" alt="" loading="lazy">` : `<span class="pph">${ICON.fork}</span>`}<span class="pt">${esc(r.title)}</span>${f ? `<span class="pf" title="${v === "fav" ? "Kid favourite" : "The kids aren't keen"}">${f}</span>` : ""}</button>`;
+    }).join("") : `<p class="hint">${q ? "No recipes match." : ""}</p>`;
+  }
+  function setUrlHint(el, url) { el.textContent = url ? `From ${siteOf(url)}` : "Leave empty if it's a recipe you know by heart."; }
   function openForm({ meal = null, dayIndex = null, recipe = null } = {}) {
-    editing = meal;
+    editing = meal; picked = recipe?.id || null;
     fillDayOptions();
-    $("#formTitle").textContent = meal ? "Edit this meal" : "Add a recipe";
+    $("#formTitle").textContent = meal ? "Edit this meal" : recipe ? `Plan “${recipe.title}”` : "Add a meal";
+    $("#pickField").hidden = !!(meal || recipe) || recipes.length === 0;
+    $("#pickSearch").value = ""; renderPicks();
     $("#fUrl").value = meal?.url || recipe?.url || "";
     $("#fTitle").value = meal?.title || recipe?.title || "";
-    $("#fDay").value = meal ? meal.dayIndex : (dayIndex ?? Math.min(6, Math.max(0, Math.round((new Date() - weekStart) / 864e5))));
+    const todayIdx = Math.round((new Date() - weekStart) / 864e5);
+    $("#fDay").value = meal ? meal.dayIndex : (dayIndex ?? Math.min(6, Math.max(0, todayIdx)));
     $("#fSlot").value = meal?.slot || "dinner";
     $("#fNotes").value = meal?.notes || "";
-    const srcUrl = meal?.url || recipe?.url || "";
-    const boxCopy = srcUrl ? recipes.find((r) => r.id === recipeId(srcUrl)) : null;
-    $("#fCopy").value = boxCopy?.copyText || recipe?.copyText || "";
+    const src = meal ? boxFor(meal) : recipe;
+    $("#fCopy").value = src?.copyText || "";
     $("#fImage").value = "";
+    $("#form details").open = false;
     fCopyCtl.reset();
-    if (srcUrl && (!$("#fCopy").value || !(boxCopy || recipe)?.hasImage)) setTimeout(() => $("#fFetchBtn").click(), 50);
+    const srcUrl = $("#fUrl").value;
+    if (srcUrl && (!$("#fCopy").value || !src?.hasImage)) setTimeout(() => fCopyCtl.run(true), 50);
     $("#deleteBtn").hidden = !meal;
     $("#formErr").hidden = true;
-    $("#urlHint").textContent = $("#fUrl").value ? `From ${siteOf($("#fUrl").value)}` : "Leave empty if it's a recipe you know by heart.";
+    setUrlHint($("#urlHint"), srcUrl);
     dlg.showModal();
-    setTimeout(() => ($("#fUrl").value ? $("#fTitle") : $("#fUrl")).focus(), 30);
+    setTimeout(() => (meal || recipe ? $("#fDay") : $("#pickField").hidden ? $("#fUrl") : $("#pickSearch")).focus(), 30);
   }
+  $("#pickSearch").addEventListener("input", renderPicks);
+  $("#picks").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pick]"); if (!b) return;
+    const r = recipes.find((x) => x.id === b.dataset.pick); if (!r) return;
+    picked = r.id; renderPicks();
+    $("#fUrl").value = r.url || ""; $("#fTitle").value = r.title; $("#fCopy").value = r.copyText || ""; $("#fImage").value = "";
+    fCopyCtl.reset(); setUrlHint($("#urlHint"), r.url);
+    if (r.url && (!r.copyText || !r.hasImage)) fCopyCtl.run(true);
+  });
   $("#fUrl").addEventListener("input", () => {
+    if (picked) { picked = null; renderPicks(); }
     const u = normalizeUrl($("#fUrl").value);
     if (u && !$("#fTitle").value.trim()) { const t = titleFromUrl(u); if (t) $("#fTitle").value = t; }
-    $("#urlHint").textContent = u ? `From ${siteOf(u)}` : "Leave empty if it's a recipe you know by heart.";
+    setUrlHint($("#urlHint"), u);
   });
-  $("#cancelBtn").addEventListener("click", () => dlg.close());
   $("#form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const err = $("#formErr"); err.hidden = true;
     const url = normalizeUrl($("#fUrl").value);
     if (url === null) { err.textContent = "That link doesn't look right. Copy it again from the address bar."; err.hidden = false; return; }
     const title = $("#fTitle").value.trim();
-    if (!title) { err.textContent = "Give the recipe a name."; err.hidden = false; return; }
-    const data = { title, url: url || "", site: url ? siteOf(url) : "", week: isoDate(weekStart), dayIndex: Number($("#fDay").value), slot: $("#fSlot").value, notes: $("#fNotes").value.trim(), cooked: editing?.cooked || false, createdAt: editing?.createdAt || Date.now() };
+    if (!title) { err.textContent = "Give the meal a name."; err.hidden = false; return; }
+    const data = { title, url: url || "", site: url ? siteOf(url) : "", week: editing?.week || isoDate(weekStart), dayIndex: Number($("#fDay").value), slot: $("#fSlot").value, notes: $("#fNotes").value.trim(), cooked: editing?.cooked || false, createdAt: editing?.createdAt || Date.now() };
     $("#saveBtn").disabled = true;
     try {
       if (url) {
-        const rid = recipeId(url);
-        const prev = recipes.find((r) => r.id === rid);
-        await store.setRecipe(rid, { title, url, site: data.site, notes: prev?.notes || "", copyText: $("#fCopy").value.trim() || prev?.copyText || "", imageUrl: $("#fImage").value, addedAt: prev?.addedAt || Date.now(), lastPlanned: Date.now(), timesPlanned: (prev?.timesPlanned || 0) + (editing ? 0 : 1) });
+        const rid = recipeId(url), prev = recipes.find((r) => r.id === rid);
+        await call("PUT", `/api/recipes/${rid}`, { title: prev?.title || title, url, site: data.site, notes: prev?.notes || "", copyText: $("#fCopy").value.trim() || prev?.copyText || "", imageUrl: $("#fImage").value, addedAt: prev?.addedAt || Date.now(), lastPlanned: Date.now(), timesPlanned: (prev?.timesPlanned || 0) + (editing ? 0 : 1) });
+      } else if (picked && !editing) {
+        const prev = recipes.find((r) => r.id === picked);
+        if (prev) await call("PUT", `/api/recipes/${prev.id}`, { ...prev, lastPlanned: Date.now(), timesPlanned: (prev.timesPlanned || 0) + 1 });
       }
-      await store.setMeal(editing?.id || newId(), data);
+      await call("PUT", `/api/meals/${editing?.id || newId()}`, data);
       dlg.close();
       toast(editing ? "Saved" : `Added to ${DAY_NAMES[data.dayIndex]}`);
+      await Promise.all([loadWeek(), loadRecipes()]);
     } catch (ex) { console.error(ex); err.textContent = ex.message; err.hidden = false; }
     finally { $("#saveBtn").disabled = false; }
   });
   $("#deleteBtn").addEventListener("click", async () => {
     if (!editing) return;
-    try { await store.deleteMeal(editing.id); dlg.close(); toast("Removed from this week"); }
+    try { await call("DELETE", `/api/meals/${editing.id}`); dlg.close(); toast("Removed from this week"); loadWeek(); }
     catch (ex) { console.error(ex); toast("Couldn't remove it. Try again."); }
   });
 
-  // ---------- recipe box form ----------
+  // ---------- add / edit a recipe in the box ----------
   const rdlg = $("#rdlg");
   let editingRecipe = null;
-  const rCopyCtl = wireCopyField({ urlEl: $("#rUrl"), titleEl: $("#rTitle"), copyEl: $("#rCopy"), statusEl: $("#rCopyStatus"), btnEl: $("#rFetchBtn"), imageEl: $("#rImage") });
+  const rCopyCtl = wireCopyField({ urlEl: $("#rUrl"), titleEl: $("#rTitle"), copyEl: $("#rCopy"), statusEl: $("#rCopyStatus"), btnEl: $("#rFetchBtn"), imageEl: $("#rImage"), hintEl: $("#rUrlHint") });
   function openRecipeForm(recipe = null) {
     editingRecipe = recipe;
-    $("#rformTitle").textContent = recipe ? "Edit recipe" : "Add to recipe box";
+    $("#rformTitle").textContent = recipe ? "Edit recipe" : "Add a recipe";
     $("#rUrl").value = recipe?.url || "";
     $("#rTitle").value = recipe?.title || "";
     $("#rNotes").value = recipe?.notes || "";
     $("#rCopy").value = recipe?.copyText || "";
     $("#rImage").value = "";
     $("#rShared").checked = recipe ? !!recipe.shared : true;
+    $("#rform details").open = !!recipe && !recipe.url;
     rCopyCtl.reset();
-    if (recipe?.url && (!$("#rCopy").value || !recipe.hasImage)) setTimeout(() => $("#rFetchBtn").click(), 50);
+    if (recipe?.url && (!recipe.copyText || !recipe.hasImage)) setTimeout(() => rCopyCtl.run(true), 50);
     $("#rDeleteBtn").hidden = !recipe;
     $("#rformErr").hidden = true;
-    $("#rUrlHint").textContent = recipe?.url ? `From ${siteOf(recipe.url)}` : "Leave empty if it's a recipe you know by heart.";
+    setUrlHint($("#rUrlHint"), recipe?.url);
     rdlg.showModal();
     setTimeout(() => ($("#rUrl").value ? $("#rTitle") : $("#rUrl")).focus(), 30);
   }
   $("#rUrl").addEventListener("input", () => {
     const u = normalizeUrl($("#rUrl").value);
     if (u && !$("#rTitle").value.trim()) { const t = titleFromUrl(u); if (t) $("#rTitle").value = t; }
-    $("#rUrlHint").textContent = u ? `From ${siteOf(u)}` : "Leave empty if it's a recipe you know by heart.";
+    setUrlHint($("#rUrlHint"), u);
   });
-  $("#rCancelBtn").addEventListener("click", () => rdlg.close());
   $("#rform").addEventListener("submit", async (e) => {
     e.preventDefault();
     const err = $("#rformErr"); err.hidden = true;
@@ -911,42 +1340,121 @@
     $("#rSaveBtn").disabled = true;
     try {
       if (editingRecipe && editingRecipe.id !== id) await call("DELETE", `/api/recipes/${editingRecipe.id}`);
-      await store.setRecipe(id, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), imageUrl: $("#rImage").value, shared: $("#rShared").checked, addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
+      await call("PUT", `/api/recipes/${id}`, { title, url: url || "", site: url ? siteOf(url) : "", notes: $("#rNotes").value.trim(), copyText: $("#rCopy").value.trim(), imageUrl: $("#rImage").value, shared: $("#rShared").checked, addedAt: prev?.addedAt || Date.now(), lastPlanned: prev?.lastPlanned || 0, timesPlanned: prev?.timesPlanned || 0 });
       rdlg.close();
       toast(editingRecipe ? "Saved" : "Added to your recipe box");
+      await loadRecipes(); loadShared();
     } catch (ex) { console.error(ex); err.textContent = ex.message; err.hidden = false; }
     finally { $("#rSaveBtn").disabled = false; }
   });
   $("#rDeleteBtn").addEventListener("click", async () => {
     if (!editingRecipe) return;
     if (!confirm(`Remove "${editingRecipe.title}" from your recipe box? Meals already planned stay where they are.`)) return;
-    try { await store.deleteRecipe(editingRecipe.id); rdlg.close(); toast("Removed from recipe box"); }
+    try { await call("DELETE", `/api/recipes/${editingRecipe.id}`); rdlg.close(); toast("Removed from recipe box"); await loadRecipes(); loadShared(); }
     catch (ex) { console.error(ex); toast("Couldn't remove it. Try again."); }
   });
-  $("#addRecipeBtn").addEventListener("click", () => openRecipeForm());
 
-  // ---------- events ----------
+  // ---------- family & settings ----------
+  const settings = $("#settings");
+  let kidDraft = [];
+  function renderKidEditor() {
+    $("#kidList").innerHTML = kidDraft.length ? kidDraft.map((k, i) => `<div class="kidedit">
+      <span class="kidav" style="--h:${hueOf(k.id)}" aria-hidden="true">${esc(initial(k.name))}</span>
+      <input type="text" value="${esc(k.name)}" data-kidname="${i}" maxlength="40" placeholder="Child's name" aria-label="Child's name">
+      <button type="button" class="btn small ghost" data-kidrm="${i}">Remove</button>
+    </div>`).join("") : `<p class="hint">No kids added yet.</p>`;
+  }
+  async function saveKids() {
+    const next = kidDraft.map((k) => ({ id: k.id, name: k.name.trim() })).filter((k) => k.name);
+    if (JSON.stringify(next) === JSON.stringify(kids)) return;
+    try {
+      kids = (await call("PUT", "/api/family", { kids: next })).kids;
+      kidDraft = kids.map((k) => ({ ...k })).concat(kidDraft.filter((k) => !k.name.trim()));
+      renderKidEditor(); updateCallout(); toast("Saved");
+      await loadRatings();
+    } catch (e) { console.error(e); toast(e.message); }
+  }
+  function openSettings(focusKids = false) {
+    kidDraft = kids.map((k) => ({ ...k }));
+    if (focusKids && !kidDraft.length) kidDraft.push({ id: "k" + Math.random().toString(36).slice(2, 10), name: "" });
+    renderKidEditor();
+    $("#setWho").innerHTML = `Signed in as <strong>${esc(user.name || user.email)}</strong>${user.name ? ` (${esc(user.email)})` : ""}`;
+    loadKeys();
+    settings.showModal();
+    if (focusKids) $$("#kidList input").find((i) => !i.value)?.focus();
+  }
+  $("#meBtn").addEventListener("click", () => openSettings());
+  $("#addKid").addEventListener("click", () => {
+    kidDraft.push({ id: "k" + Math.random().toString(36).slice(2, 10), name: "" });
+    renderKidEditor(); $$("#kidList input").at(-1)?.focus();
+  });
+  $("#kidList").addEventListener("input", (e) => {
+    const i = e.target.dataset.kidname; if (i === undefined) return;
+    kidDraft[i].name = e.target.value;
+    e.target.previousElementSibling.textContent = initial(e.target.value);
+  });
+  $("#kidList").addEventListener("change", (e) => { if (e.target.dataset.kidname !== undefined) saveKids(); });
+  $("#kidList").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.kidname !== undefined) { e.preventDefault(); e.target.blur(); } });
+  $("#kidList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kidrm]"); if (!b) return;
+    const k = kidDraft[b.dataset.kidrm];
+    if (k.name.trim() && kids.some((x) => x.id === k.id) && !confirm(`Remove ${k.name}? Their meal ratings will be deleted too.`)) return;
+    kidDraft.splice(b.dataset.kidrm, 1); renderKidEditor(); saveKids();
+  });
+  settings.addEventListener("close", () => { if ($("#kidList").contains(document.activeElement)) saveKids(); });
+  $("#signOutBtn").addEventListener("click", async () => { settings.close(); try { await call("POST", "/api/logout"); } catch {} user = null; showSignedOut(); });
+
+  // Connection keys for Claude (MCP)
+  async function loadKeys() {
+    let keys = [];
+    try { keys = (await call("GET", "/api/tokens")).tokens; } catch (e) { console.error(e); }
+    const when = (t) => t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "never";
+    $("#keys").innerHTML = keys.length ? keys.map((k) => `<div class="key"><span class="meta"><strong>${esc(k.name)}</strong> · created ${when(k.createdAt)} · last used ${when(k.lastUsed)}</span><button class="btn small ghost" data-delkey="${esc(k.id)}">Remove</button></div>`).join("") : "";
+  }
+  $("#newKeyBtn").addEventListener("click", async () => {
+    const name = prompt("Give this key a name, for example the computer it will be used on:", "Claude Code");
+    if (name === null) return;
+    try {
+      const d = await call("POST", "/api/tokens", { name });
+      const cmd = `claude mcp add --transport http weekly-table ${location.origin}/mcp --header "Authorization: Bearer ${d.token}"`;
+      $("#kKey").textContent = d.token; $("#kCmd").textContent = cmd;
+      $("#kCopyKey").onclick = () => navigator.clipboard.writeText(d.token).then(() => toast("Key copied"));
+      $("#kCopyCmd").onclick = () => navigator.clipboard.writeText(cmd).then(() => toast("Command copied"));
+      $("#kdlg").showModal(); loadKeys();
+    } catch (e) { console.error(e); toast(e.message); }
+  });
+  $("#keys").addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-delkey]"); if (!t) return;
+    if (!confirm("Remove this connection key? Anything using it will stop working.")) return;
+    try { await call("DELETE", `/api/tokens/${t.dataset.delkey}`); loadKeys(); toast("Key removed"); } catch (ex) { console.error(ex); toast(ex.message); }
+  });
+
+  // ---------- dialogs: close buttons, and clicking the dimmed background ----------
+  for (const d of $$("dialog")) d.addEventListener("click", (e) => { if (e.target === d || e.target.closest("[data-close]")) d.close(); });
+
+  // ---------- page-wide clicks ----------
   $("#addBtn").addEventListener("click", () => openForm());
-  $("#prevWeek").addEventListener("click", () => { weekStart = addDays(weekStart, -7); loadingWeek = true; render(); loadWeek(); });
-  $("#nextWeek").addEventListener("click", () => { weekStart = addDays(weekStart, 7); loadingWeek = true; render(); loadWeek(); });
-  $("#todayBtn").addEventListener("click", () => { weekStart = mondayOf(new Date()); loadingWeek = true; render(); loadWeek(); });
-  $("#search").addEventListener("input", renderRecipes);
+  $("#emptyAdd").addEventListener("click", () => openForm());
+  $("#addRecipeBtn").addEventListener("click", () => openRecipeForm());
+  const goWeek = (d) => { weekStart = d; loadingWeek = true; meals = []; renderWeek(); loadWeek(); };
+  $("#prevWeek").addEventListener("click", () => goWeek(addDays(weekStart, -7)));
+  $("#nextWeek").addEventListener("click", () => goWeek(addDays(weekStart, 7)));
+  $("#todayBtn").addEventListener("click", () => goWeek(mondayOf(new Date())));
   document.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-add],[data-edit],[data-cook],[data-plan],[data-redit],[data-view],[data-sview],[data-splan],[data-scopy]");
-    if (!t) return;
-    if (t.dataset.add !== undefined) return openForm({ dayIndex: Number(t.dataset.add) });
-    if (t.dataset.edit) return openForm({ meal: meals.find((m) => m.id === t.dataset.edit) });
-    if (t.dataset.cook) {
-      const m = meals.find((x) => x.id === t.dataset.cook); if (!m) return;
-      try { await store.patchMeal(m.id, { cooked: !m.cooked }); } catch (ex) { console.error(ex); toast("Couldn't update. Try again."); }
-      return;
-    }
-    if (t.dataset.plan) return openForm({ recipe: recipes.find((r) => r.id === t.dataset.plan) });
-    if (t.dataset.redit) return openRecipeForm(recipes.find((r) => r.id === t.dataset.redit));
-    if (t.dataset.view) { const r = recipes.find((x) => x.id === t.dataset.view); if (r) openReader(r); return; }
-    if (t.dataset.sview) { const r = findShared(t.dataset.sview); if (r) openReader(r); return; }
-    if (t.dataset.scopy) { const r = findShared(t.dataset.scopy); if (!r) return; try { await copyShared(r); toast("Added to your recipe box"); } catch (ex) { console.error(ex); toast(ex.message); } return; }
-    if (t.dataset.splan) { const r = findShared(t.dataset.splan); if (!r) return; try { const mine = await copyShared(r); openForm({ recipe: mine }); } catch (ex) { console.error(ex); toast(ex.message); } return; }
+    if (e.target.closest("dialog")) return;
+    const t = e.target.closest("[data-add],[data-cook],[data-rate],[data-open-meal],[data-plan],[data-redit],[data-ropen],[data-sopen],[data-splan],[data-scopy]");
+    if (!t) { const card = e.target.closest(".meal"); if (card) openMealSheet(card.dataset.meal); return; }
+    const ds = t.dataset;
+    if (ds.add !== undefined) return openForm({ dayIndex: Number(ds.add) });
+    if (ds.cook) return toggleCooked(ds.cook);
+    if (ds.rate) return openMealSheet(ds.rate, true);
+    if (ds.openMeal) return openMealSheet(ds.openMeal);
+    if (ds.plan) return openForm({ recipe: recipes.find((r) => r.id === ds.plan) });
+    if (ds.redit) return openRecipeForm(recipes.find((r) => r.id === ds.redit));
+    if (ds.ropen) return openSheet({ kind: "mine", id: ds.ropen });
+    if (ds.sopen) return openSheet({ kind: "shared", sid: ds.sopen });
+    if (ds.scopy) { const r = findShared(ds.scopy); if (!r) return; try { await copyShared(r); toast("Added to your recipe box"); } catch (ex) { toast(ex.message); } return; }
+    if (ds.splan) { const r = findShared(ds.splan); if (!r) return; try { openForm({ recipe: await copyShared(r) }); } catch (ex) { toast(ex.message); } }
   });
 
   // ---------- sign in / sign up ----------
@@ -954,39 +1462,37 @@
   function setMode(m) {
     mode = m;
     $("#nameField").hidden = m !== "signup";
-    $("#authTitle").textContent = m === "signup" ? "Create your account" : "Welcome to your table";
-    $("#authIntro").textContent = m === "signup" ? "Free. Your weekly plan is private; recipes are shared with the other members unless you say otherwise." : "Sign in to see your weekly plan and recipe box from any device.";
+    $("#authTitle").textContent = m === "signup" ? "Create your account" : "Welcome back";
+    $("#authIntro").textContent = m === "signup" ? "Free. Your weekly plan is private; recipes are shared with the other members unless you say otherwise." : "Sign in to see your week and your recipe box from any device.";
     $("#authSubmit").textContent = m === "signup" ? "Create account" : "Sign in";
     $("#switchRow").innerHTML = m === "signup" ? `Already have an account? <button type="button" id="toSignIn">Sign in</button>` : `New here? <button type="button" id="toSignUp">Create an account</button>`;
     $("#aPass").autocomplete = m === "signup" ? "new-password" : "current-password";
     $("#authErr").hidden = true;
   }
-  document.addEventListener("click", (e) => { if (e.target.id === "toSignUp") setMode("signup"); if (e.target.id === "toSignIn") setMode("signin"); });
+  $("#auth").addEventListener("click", (e) => { if (e.target.id === "toSignUp") setMode("signup"); if (e.target.id === "toSignIn") setMode("signin"); });
   $("#authForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = $("#aEmail").value.trim(), password = $("#aPass").value, name = $("#aName").value.trim();
     $("#authSubmit").disabled = true;
     try {
-      const d = await call("POST", mode === "signup" ? "/api/signup" : "/api/login", { email, password, name });
+      const d = await call("POST", mode === "signup" ? "/api/signup" : "/api/login", { email: $("#aEmail").value.trim(), password: $("#aPass").value, name: $("#aName").value.trim() });
       showSignedIn(d.user);
     } catch (ex) { const el = $("#authErr"); el.textContent = ex.message; el.hidden = false; }
     finally { $("#authSubmit").disabled = false; }
   });
-  $("#signOutBtn").addEventListener("click", async () => { try { await call("POST", "/api/logout"); } catch {} user = null; showSignedOut(); });
 
   function showSignedIn(u) {
-    user = u;
-    $("#auth").hidden = true; $("#app").hidden = false; $("#addBtn").hidden = false; $("#signOutBtn").hidden = false; $("#who").hidden = false;
-    $("#who").innerHTML = `Signed in as <strong>${esc(u.name || u.email)}</strong>`;
-    setStatus(true, "Saved online");
-    weekStart = mondayOf(new Date()); meals = []; recipes = []; loadingWeek = true;
-    render(); loadRecipes(); loadWeek(); loadShared(); loadKeys();
+    user = u; kids = u.kids || [];
+    $("#auth").hidden = true; $("#app").hidden = false; $("#top").hidden = false;
+    $("#meBtn").textContent = initial(u.name || u.email);
+    weekStart = mondayOf(new Date()); meals = []; recipes = []; shared = []; ratings = {}; loadingWeek = true;
+    setView(location.hash.slice(1)); updateCallout(); renderWeek(); renderRecipes(); renderShared();
+    loadRecipes(); loadWeek(); loadShared(); loadRatings();
   }
   function showSignedOut() {
-    $("#auth").hidden = false; $("#app").hidden = true; $("#addBtn").hidden = true; $("#signOutBtn").hidden = true; $("#who").hidden = true;
+    for (const d of $$("dialog")) if (d.open) d.close();
+    $("#auth").hidden = false; $("#app").hidden = true; $("#top").hidden = true;
     $("#aPass").value = ""; setMode("signin");
   }
-  $("#addBtn").hidden = true;
   call("GET", "/api/me").then((d) => d.user ? showSignedIn(d.user) : showSignedOut()).catch(showSignedOut);
 })();
 </script>
