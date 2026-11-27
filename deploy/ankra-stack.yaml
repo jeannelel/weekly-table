@@ -63,7 +63,7 @@ spec:
                     fsGroup: 1000
                   containers:
                     - name: weekly-table
-                      image: ghcr.io/jeannelel/weekly-table:sha-7024864
+                      image: ghcr.io/jeannelel/weekly-table:sha-f0a092d
                       ports:
                         - name: http
                           containerPort: 8080
@@ -72,6 +72,10 @@ spec:
                           value: /data
                         - name: TZ
                           value: Europe/Stockholm
+                        # Fingerprint of the nightly backup key (the key itself is a secret in
+                        # the private repo jeannelel/weekly-table-backups).
+                        - name: BACKUP_TOKEN_SHA256
+                          value: XydwmXmyV2sRNk4rvKnDOL85udENoBxsEahLjjtq7Nw
                       volumeMounts:
                         - name: data
                           mountPath: /data
