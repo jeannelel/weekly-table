@@ -660,12 +660,69 @@ async function mcp(req, res, user) {
   }
 }
 
+// ---------- nightly backup ----------
+// GET /backup.tar with "Authorization: Bearer <token>" returns a tar of a consistent copy of the
+// database (sessions left out, so nobody's sign-in travels with it) plus every saved picture.
+// Only the token's SHA-256 lives in the deployment (BACKUP_TOKEN_SHA256); without it the route is off.
+const BACKUP_HASH = process.env.BACKUP_TOKEN_SHA256 || "";
+function backupAllowed(req) {
+  if (!BACKUP_HASH) return false;
+  const m = /^Bearer (\S+)$/.exec(req.headers.authorization || "");
+  if (!m) return false;
+  const got = Buffer.from(sha256(m[1])), want = Buffer.from(BACKUP_HASH);
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
+}
+function tarEntry(name, data, mtime) {
+  const h = Buffer.alloc(512);
+  const put = (s, off, len) => h.write(String(s), off, len, "utf8");
+  const oct = (n, len) => n.toString(8).padStart(len - 1, "0");
+  put(name, 0, 100); put(oct(0o644, 8), 100, 8); put(oct(0, 8), 108, 8); put(oct(0, 8), 116, 8);
+  put(oct(data.length, 12), 124, 12); put(oct(Math.floor(mtime / 1000), 12), 136, 12);
+  put("        ", 148, 8); put("0", 156, 1); put("ustar\x0000", 257, 8);
+  let sum = 0; for (const b of h) sum += b;
+  put(oct(sum, 7) + "\0", 148, 8);
+  const pad = Buffer.alloc((512 - (data.length % 512)) % 512);
+  return [h, data, pad];
+}
+function buildBackup() {
+  const tmp = path.join(DATA_DIR, `.backup-${newId(8)}.db`);
+  try {
+    db.exec(`VACUUM INTO '${tmp}'`);
+    const copy = new DatabaseSync(tmp);
+    copy.exec("DELETE FROM sessions; VACUUM;");
+    copy.close();
+    const now = Date.now();
+    const parts = tarEntry("weekly-table.db", fs.readFileSync(tmp), now);
+    for (const owner of fs.readdirSync(IMG_DIR)) {
+      const dir = path.join(IMG_DIR, owner);
+      if (!safeId(owner) || !fs.statSync(dir).isDirectory()) continue;
+      for (const file of fs.readdirSync(dir)) {
+        const full = path.join(dir, file), st = fs.statSync(full);
+        const name = `images/${owner}/${file}`;
+        if (st.isFile() && Buffer.byteLength(name) < 100) parts.push(...tarEntry(name, fs.readFileSync(full), st.mtimeMs));
+      }
+    }
+    parts.push(Buffer.alloc(1024));
+    return Buffer.concat(parts);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+}
+
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
   if (url.pathname === "/healthz") { res.writeHead(200, { "Content-Type": "text/plain" }); return res.end("ok"); }
+  if (url.pathname === "/backup.tar") {
+    if (req.method !== "GET" || !backupAllowed(req)) { res.writeHead(404); return res.end(); }
+    try {
+      const tar = buildBackup();
+      res.writeHead(200, { "Content-Type": "application/x-tar", "Content-Length": tar.length, "Cache-Control": "no-store" });
+      return res.end(tar);
+    } catch (e) { console.error("backup failed", e); res.writeHead(500); return res.end(); }
+  }
   if (url.pathname === "/mcp") {
     try { await mcp(req, res, currentUser(req)); } catch (e) { console.error(e); if (!res.headersSent) json(res, 500, { error: "Something went wrong." }); }
     return;
