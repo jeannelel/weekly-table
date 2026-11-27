@@ -1,0 +1,22 @@
+{
+  "name": "The Weekly Table",
+  "short_name": "Weekly Table",
+  "description": "Plan the week, keep every recipe you love, and remember what the kids enjoy.",
+  "id": "/",
+  "start_url": "/#week",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EDF6F0",
+  "theme_color": "#EDF6F0",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Shopping list", "url": "/#shop", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Recipes", "url": "/#recipes", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

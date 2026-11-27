@@ -5,6 +5,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const zlib = require("node:zlib");
 const { DatabaseSync } = require("node:sqlite");
 
 const PORT = Number(process.env.PORT || 8080);
@@ -462,10 +463,25 @@ function serveStatic(req, res, pathname) {
   if (!full.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end(); }
   fs.stat(full, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404, { "Content-Type": "text/plain" }); return res.end("Not found"); }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(full)] || "application/octet-stream", "Cache-Control": file === "/index.html" ? "no-cache" : "public, max-age=3600" });
+    const ext = path.extname(full);
+    // Page, code and styles are checked on every visit (cheap thanks to the ETag), so a new version shows at once.
+    const fresh = [".html", ".js", ".css", ".webmanifest"].includes(ext);
+    const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": fresh ? "no-cache" : "public, max-age=86400", ETag: etag, Vary: "Accept-Encoding" };
+    if (req.headers["if-none-match"] === etag) { res.writeHead(304, headers); return res.end(); }
+    const gzip = fresh || ext === ".svg";
+    if (gzip && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+      let hit = gzCache.get(full);
+      if (!hit || hit.etag !== etag) { hit = { etag, body: zlib.gzipSync(fs.readFileSync(full), { level: 9 }) }; gzCache.set(full, hit); }
+      res.writeHead(200, { ...headers, "Content-Encoding": "gzip", "Content-Length": hit.body.length });
+      return res.end(req.method === "HEAD" ? undefined : hit.body);
+    }
+    res.writeHead(200, { ...headers, "Content-Length": st.size });
+    if (req.method === "HEAD") return res.end();
     fs.createReadStream(full).pipe(res);
   });
 }
+const gzCache = new Map();
 
 // ---------- MCP server (so Claude and other assistants can use the planner) ----------
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
