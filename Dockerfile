@@ -3,6 +3,7 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=8080 DATA_DIR=/data
 COPY server.js ./
 COPY public ./public
+COPY demo ./demo
 RUN mkdir -p /data && chown -R node:node /data /app
 USER node
 EXPOSE 8080

@@ -81,10 +81,10 @@ function verifyPassword(pw, stored) {
   const want = Buffer.from(hash, "base64url");
   return want.length === check.length && crypto.timingSafeEqual(want, check);
 }
-function setSession(res, userId) {
+function setSession(res, userId, days = SESSION_DAYS) {
   const token = newId(32);
-  db.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(token, userId, Date.now() + SESSION_DAYS * 864e5);
-  res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}`);
+  db.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(token, userId, Date.now() + days * 864e5);
+  res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.round(days * 86400)}`);
 }
 function clearSession(req, res) {
   const t = parseCookies(req)[COOKIE];
@@ -95,7 +95,7 @@ const sha256 = (v) => crypto.createHash("sha256").update(v).digest("base64url");
 function parseKids(v) {
   try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a.filter((k) => k && safeId(k.id) && k.name).map((k) => ({ id: k.id, name: String(k.name) })) : []; } catch { return []; }
 }
-const userOut = (row) => row ? { id: row.id, email: row.email, name: row.name, kids: parseKids(row.kids) } : null;
+const userOut = (row) => row ? { id: row.id, email: isDemoId(row.id) ? DEMO_EMAIL : row.email, name: row.name, kids: parseKids(row.kids), ...(isDemoId(row.id) ? { demo: true } : {}) } : null;
 function currentUser(req) {
   const auth = req.headers.authorization || "";
   if (/^bearer\s+/i.test(auth)) {
@@ -262,6 +262,7 @@ async function api(req, res, url, user) {
     const b = await readBody(req);
     const email = clean(b.email, 200).trim().toLowerCase(), password = String(b.password || ""), name = clean(b.name, 80).trim();
     if (!isEmail(email)) return json(res, 400, { error: "That email address doesn't look right." });
+    if (email === DEMO_EMAIL) return json(res, 409, { error: "That address is kept for the demo. Sign in with it to try the demo." });
     if (password.length < 6) return json(res, 400, { error: "Choose a password with at least 6 characters." });
     if (db.prepare("SELECT 1 FROM users WHERE email = ?").get(email)) return json(res, 409, { error: "There's already an account with that email. Sign in instead." });
     const id = newId(12);
@@ -272,13 +273,20 @@ async function api(req, res, url, user) {
   if (p === "/api/login" && m === "POST") {
     const b = await readBody(req);
     const email = clean(b.email, 200).trim().toLowerCase(), password = String(b.password || "");
+    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      // The demo: every sign-in gets its own fresh copy of the sample family, so visitors never see each other's changes.
+      if (tooManyTries("demo:" + clientIp(req))) return json(res, 429, { error: "Too many tries. Wait a few minutes and try again." });
+      const id = createDemoCopy(b.today);
+      setSession(res, id, DEMO_HOURS / 24);
+      return json(res, 200, { user: userOut(db.prepare("SELECT id, email, name, kids FROM users WHERE id = ?").get(id)) });
+    }
     if (tooManyTries(email)) return json(res, 429, { error: "Too many tries. Wait a few minutes and try again." });
     const u = db.prepare("SELECT id, email, name, kids, pass_hash FROM users WHERE email = ?").get(email);
     if (!u || !verifyPassword(password, u.pass_hash)) return json(res, 401, { error: "Email or password is wrong. Try again." });
     setSession(res, u.id);
     return json(res, 200, { user: userOut(u) });
   }
-  if (p === "/api/logout" && m === "POST") { clearSession(req, res); return json(res, 200, { ok: true }); }
+  if (p === "/api/logout" && m === "POST") { clearSession(req, res); if (user?.demo) dropUser(user.id); return json(res, 200, { ok: true }); }
 
   if (p === "/api/meals" && m === "GET") {
     if (!need()) return;
@@ -401,17 +409,17 @@ async function api(req, res, url, user) {
   if (p === "/api/shared" && m === "GET") {
     if (!need()) return;
     const rows = db.prepare(`SELECT r.*, u.name AS owner_name, u.email AS owner_email FROM recipes r JOIN users u ON u.id = r.user_id
-      WHERE r.shared = 1 ORDER BY r.added_at DESC LIMIT 500`).all();
+      WHERE r.shared = 1 AND ${sharedScope(user)} ORDER BY r.added_at DESC LIMIT 500`).all();
     return json(res, 200, { recipes: rows.map((r) => ({ ...recipeOut(r), ownerId: r.user_id, ownerName: r.owner_name || r.owner_email.split("@")[0], mine: r.user_id === user.id })) });
   }
   if ((mm = /^\/api\/shared\/([^/]+)\/([^/]+)\/(image|copy)$/.exec(p))) {
     if (!need()) return;
     const ownerId = safeId(mm[1]), id = safeId(mm[2]); if (!ownerId || !id) return json(res, 400, { error: "Bad id." });
-    const row = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ? AND shared = 1").get(ownerId, id);
+    const row = canSeeShared(user, ownerId) ? db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ? AND shared = 1").get(ownerId, id) : null;
     if (!row) return json(res, 404, { error: "That recipe isn't shared any more." });
     if (mm[3] === "image" && m === "GET") {
-      const full = row.image_file ? path.join(IMG_DIR, ownerId, row.image_file) : "";
-      if (!full || !fs.existsSync(full)) { res.writeHead(404); return res.end(); }
+      const full = imagePath(ownerId, row.image_file);
+      if (!full) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { "Content-Type": MIME["." + path.extname(full).slice(1)] || "image/jpeg", "Cache-Control": "private, max-age=86400" });
       return fs.createReadStream(full).pipe(res);
     }
@@ -419,8 +427,10 @@ async function api(req, res, url, user) {
       // Copy the recipe, text and picture included, into the current user's own box.
       const mine = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?").get(user.id, id);
       let imageFile = mine?.image_file || "";
-      if (row.image_file && !imageFile) {
-        try { const dir = path.join(IMG_DIR, user.id); fs.mkdirSync(dir, { recursive: true }); fs.copyFileSync(path.join(IMG_DIR, ownerId, row.image_file), path.join(dir, row.image_file)); imageFile = row.image_file; } catch {}
+      const src = imagePath(ownerId, row.image_file);
+      if (src && !imageFile) {
+        if (src.startsWith(DEMO_IMG_DIR)) imageFile = row.image_file; // demo pictures are shared from the app itself, no copy needed
+        else try { const dir = path.join(IMG_DIR, user.id); fs.mkdirSync(dir, { recursive: true }); fs.copyFileSync(src, path.join(dir, row.image_file)); imageFile = row.image_file; } catch {}
       }
       db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file, shared)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
@@ -434,8 +444,8 @@ async function api(req, res, url, user) {
     if (!need()) return;
     const id = safeId(mm[1]); if (!id) return json(res, 400, { error: "Bad id." });
     const row = db.prepare("SELECT image_file FROM recipes WHERE user_id = ? AND id = ?").get(user.id, id);
-    const full = row && row.image_file ? path.join(IMG_DIR, user.id, row.image_file) : "";
-    if (!full || !fs.existsSync(full)) { res.writeHead(404); return res.end(); }
+    const full = row ? imagePath(user.id, row.image_file) : "";
+    if (!full) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { "Content-Type": MIME["." + path.extname(full).slice(1)] || "image/jpeg", "Cache-Control": "private, max-age=86400" });
     return fs.createReadStream(full).pipe(res);
   }
@@ -608,13 +618,14 @@ async function mcpTool(user, name, a = {}) {
       const mine = db.prepare("SELECT * FROM recipes WHERE user_id = ? ORDER BY last_planned DESC, added_at DESC").all(uid).filter(match).slice(0, limit);
       let out = mine.length ? `Your recipe box:\n${mine.map((r) => `- [${r.id}] ${r.title}${r.site ? ` (${r.site})` : ""}${r.copy_text ? "" : " [no saved text]"}${r.shared ? "" : " [private]"}${ratingText(uid, user.kids, dishKeyOf(r.url, r.title))}`).join("\n")}` : "Your recipe box: no matches.";
       if (a.include_shared !== false) {
-        const others = db.prepare("SELECT r.*, u.name AS owner_name FROM recipes r JOIN users u ON u.id = r.user_id WHERE r.shared = 1 AND r.user_id != ? ORDER BY r.added_at DESC").all(uid).filter(match).slice(0, limit);
+        const others = db.prepare(`SELECT r.*, u.name AS owner_name FROM recipes r JOIN users u ON u.id = r.user_id WHERE r.shared = 1 AND r.user_id != ? AND ${sharedScope(user)} ORDER BY r.added_at DESC`).all(uid).filter(match).slice(0, limit);
         out += others.length ? `\n\nShared by other members:\n${others.map((r) => `- [${r.id}, owner ${r.user_id}] ${r.title}${r.site ? ` (${r.site})` : ""} — shared by ${r.owner_name || "a member"}${ratingText(uid, user.kids, dishKeyOf(r.url, r.title))}`).join("\n")}` : "\n\nShared by other members: no matches.";
       }
       return out;
     }
     case "get_recipe": {
       const owner = a.owner_id ? String(a.owner_id) : uid;
+      if (owner !== uid && !canSeeShared(user, owner)) throw new Error(`No recipe with id ${a.id}.`);
       const r = db.prepare("SELECT * FROM recipes WHERE user_id = ? AND id = ?" + (owner !== uid ? " AND shared = 1" : "")).get(owner, String(a.id || ""));
       if (!r) throw new Error(`No recipe with id ${a.id}.`);
       return `# ${r.title}\n${r.url ? `Source: ${r.url}\n` : ""}${r.notes ? `Notes: ${r.notes}\n` : ""}\n${r.copy_text || "(No saved text. Use read_recipe_page on the source link.)"}`;
@@ -627,7 +638,7 @@ async function mcpTool(user, name, a = {}) {
     case "rate_dish": {
       let dish = null;
       if (a.meal_id) dish = db.prepare("SELECT url, title FROM meals WHERE user_id = ? AND id = ?").get(uid, String(a.meal_id));
-      else if (a.recipe_id) { const owner = a.owner_id ? String(a.owner_id) : uid; dish = db.prepare("SELECT url, title FROM recipes WHERE user_id = ? AND id = ?" + (owner !== uid ? " AND shared = 1" : "")).get(owner, String(a.recipe_id)); }
+      else if (a.recipe_id) { const owner = a.owner_id ? String(a.owner_id) : uid; if (owner !== uid && !canSeeShared(user, owner)) throw new Error("Couldn't find that dish."); dish = db.prepare("SELECT url, title FROM recipes WHERE user_id = ? AND id = ?" + (owner !== uid ? " AND shared = 1" : "")).get(owner, String(a.recipe_id)); }
       if (!dish) throw new Error("Couldn't find that dish. Pass a meal_id from get_week or a recipe_id from search_recipes.");
       const kids = user.kids;
       let kid;
@@ -676,6 +687,89 @@ async function mcp(req, res, user) {
   }
 }
 
+// ---------- the demo ----------
+// Signing in with demo@demo.com / demo makes a private, throwaway copy of a sample family (demo/content.js):
+// a full week, a recipe box with pictures, two kids with ratings, and two pretend friends who share recipes.
+// Copies live for a day (or until sign out). They never see real members' recipes, and real members never see them.
+const DEMO_EMAIL = "demo@demo.com", DEMO_PASSWORD = "demo", DEMO_HOURS = 24, DEMO_MAX_COPIES = 300;
+const DEMO = require("./demo/content.js");
+const DEMO_IMG_DIR = path.join(__dirname, "demo", "images");
+function isDemoId(id) { return /^demo_/.test(id || ""); }
+function isDemoFriend(id) { return /^demofriend_/.test(id || ""); }
+// SQL for "rows that belong to the demo" (a visitor's copy or a pretend friend).
+const DEMO_ROWS = (col) => `(${col} LIKE 'demo\\_%' ESCAPE '\\' OR ${col} LIKE 'demofriend\\_%' ESCAPE '\\')`;
+// Demo visitors only see the pretend friends' recipes; real members never see anything from the demo.
+const sharedScope = (viewer, col = "r.user_id") => isDemoId(viewer.id) ? `${col} LIKE 'demofriend\\_%' ESCAPE '\\'` : `NOT ${DEMO_ROWS(col)}`;
+const canSeeShared = (viewer, ownerId) => isDemoId(viewer.id) ? isDemoFriend(ownerId) : !isDemoId(ownerId) && !isDemoFriend(ownerId);
+const clientIp = (req) => String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress || "";
+function imagePath(userId, file) {
+  if (!file || file !== path.basename(file)) return "";
+  const own = path.join(IMG_DIR, userId, file);
+  if (fs.existsSync(own)) return own;
+  if (isDemoId(userId) || isDemoFriend(userId)) { const d = path.join(DEMO_IMG_DIR, file); if (fs.existsSync(d)) return d; }
+  return "";
+}
+function dropUser(id) {
+  for (const t of ["meals", "recipes", "ratings", "api_tokens", "sessions"]) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(id);
+  db.prepare("DELETE FROM users WHERE id = ?").run(id);
+  try { fs.rmSync(path.join(IMG_DIR, id), { recursive: true, force: true }); } catch {}
+}
+const insertDemoRecipe = db.prepare(`INSERT INTO recipes (user_id, id, title, url, site, notes, copy_text, added_at, last_planned, times_planned, image_url, image_file, shared)
+  VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, '', ?, ?)`);
+function createDemoCopy(todayIso) {
+  // The visitor's own "today" (sent by the browser), so the plan lines up with their week and tonight's dinner.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(todayIso || ""));
+  let today = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date();
+  if (isNaN(today) || Math.abs(today - Date.now()) > 2 * 864e5) today = new Date();
+  today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const ws = mondayOf(today), now = Date.now();
+  const id = "demo_" + newId(9);
+  const old = db.prepare("SELECT id FROM users WHERE id LIKE 'demo\\_%' ESCAPE '\\' ORDER BY created_at DESC LIMIT -1 OFFSET ?").all(DEMO_MAX_COPIES - 1);
+  db.exec("BEGIN");
+  try {
+    for (const o of old) dropUser(o.id);
+    db.prepare("INSERT INTO users (id, email, name, pass_hash, created_at, kids) VALUES (?, ?, ?, '!', ?, ?)").run(id, `${id}@demo.invalid`, DEMO.name, now, JSON.stringify(DEMO.kids));
+    const byKey = Object.fromEntries(DEMO.family.map((r) => [r.key, r]));
+    const lastPlanned = {};
+    const addMeal = db.prepare("INSERT INTO meals (user_id, id, title, url, site, week, day_index, slot, notes, cooked, created_at) VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, ?)");
+    for (const [offset, plan] of Object.entries(DEMO.weeks)) {
+      const week = addDays(ws, 7 * Number(offset)), weekIso = isoOf(week);
+      const plannedAt = addDays(week, -2).getTime() + 18 * 3600e3; // planned on the Saturday evening before
+      plan.forEach(([day, slot, key, note], i) => {
+        const r = byKey[key]; if (!r) return;
+        const date = addDays(week, day);
+        const cooked = date < today;
+        addMeal.run(id, "m" + newId(8), r.title, weekIso, day, slot, note || "", cooked ? 1 : 0, Math.min(now, plannedAt + i * 60e3));
+        if (date <= addDays(today, 7)) lastPlanned[key] = Math.max(lastPlanned[key] || 0, Math.min(now, plannedAt));
+      });
+    }
+    const addRating = db.prepare("INSERT INTO ratings (user_id, dish_key, kid_id, rating, title, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
+    for (const r of DEMO.family) {
+      insertDemoRecipe.run(id, "d-" + r.key, r.title, r.notes || "", r.text, now - (r.added || 30) * 864e5,
+        lastPlanned[r.key] || now - ((r.added || 30) / 2) * 864e5, r.planned || 1, r.image, 0);
+      for (const [kid, v] of Object.entries(r.rate || {})) addRating.run(id, "t:" + normTitle(r.title), kid, v, r.title, now - 3 * 864e5);
+    }
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+  return id;
+}
+function seedDemoFriends() {
+  // The pretend friends are rebuilt on every start, so edits to demo/content.js show up after a deploy.
+  const now = Date.now();
+  for (const f of DEMO.friends) {
+    db.prepare("INSERT INTO users (id, email, name, pass_hash, created_at) VALUES (?, ?, ?, '!', ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name").run(f.id, `${f.id}@demo.invalid`, f.name, now);
+    db.prepare("DELETE FROM recipes WHERE user_id = ?").run(f.id);
+    for (const r of f.recipes) insertDemoRecipe.run(f.id, "d-" + r.key, r.title, "", r.text, now - (r.added || 10) * 864e5, 0, 0, r.image, 1);
+  }
+}
+function sweepDemoCopies() {
+  for (const u of db.prepare("SELECT id FROM users WHERE id LIKE 'demo\\_%' ESCAPE '\\' AND created_at < ?").all(Date.now() - (DEMO_HOURS + 1) * 3600e3)) dropUser(u.id);
+}
+seedDemoFriends();
+sweepDemoCopies();
+console.log(`Demo ready: ${DEMO.family.length} family recipes, ${DEMO.friends.length} friends sharing, ${fs.readdirSync(DEMO_IMG_DIR).length} pictures`);
+setInterval(sweepDemoCopies, 3600e3).unref();
+
 // ---------- nightly backup ----------
 // GET /backup.tar with "Authorization: Bearer <token>" returns a tar of a consistent copy of the
 // database (sessions left out, so nobody's sign-in travels with it) plus every saved picture.
@@ -705,13 +799,15 @@ function buildBackup() {
   try {
     db.exec(`VACUUM INTO '${tmp}'`);
     const copy = new DatabaseSync(tmp);
-    copy.exec("DELETE FROM sessions; VACUUM;");
+    copy.exec("DELETE FROM sessions;");
+    for (const t of ["meals", "recipes", "ratings", "api_tokens"]) copy.exec(`DELETE FROM ${t} WHERE ${DEMO_ROWS("user_id")}`);
+    copy.exec(`DELETE FROM users WHERE ${DEMO_ROWS("id")}; VACUUM;`);
     copy.close();
     const now = Date.now();
     const parts = tarEntry("weekly-table.db", fs.readFileSync(tmp), now);
     for (const owner of fs.readdirSync(IMG_DIR)) {
       const dir = path.join(IMG_DIR, owner);
-      if (!safeId(owner) || !fs.statSync(dir).isDirectory()) continue;
+      if (!safeId(owner) || isDemoId(owner) || !fs.statSync(dir).isDirectory()) continue;
       for (const file of fs.readdirSync(dir)) {
         const full = path.join(dir, file), st = fs.statSync(full);
         const name = `images/${owner}/${file}`;

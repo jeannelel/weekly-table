@@ -1166,7 +1166,8 @@
     if (!user) return;
     kidDraft = kids.map((k) => ({ ...k }));
     renderKidEditor();
-    $("#setWho").innerHTML = `Signed in as <strong>${esc(user.name || user.email)}</strong>${user.name ? ` (${esc(user.email)})` : ""}`;
+    $("#setWho").innerHTML = user.demo ? `You're trying the <strong>demo</strong>. Change anything you like: this copy is only yours, and it's cleared when you sign out or after a day.`
+      : `Signed in as <strong>${esc(user.name || user.email)}</strong>${user.name ? ` (${esc(user.email)})` : ""}`;
     renderInstall();
     loadKeys();
   }
@@ -1302,8 +1303,9 @@
     if (!email || !password) { err.textContent = "Fill in your email and password."; err.hidden = false; return; }
     $("#authSubmit").disabled = true;
     try {
-      const d = await call("POST", mode === "signup" ? "/api/signup" : "/api/login", { email, password, name: $("#aName").value.trim() });
+      const d = await call("POST", mode === "signup" ? "/api/signup" : "/api/login", { email, password, name: $("#aName").value.trim(), today: isoDate(new Date()) });
       showSignedIn(d.user);
+      if (d.user.demo) setTimeout(() => toast("Welcome to the demo. Try anything: this copy is all yours.", { label: "Got it", run() {} }), 900);
     } catch (ex) { err.textContent = ex.message; err.hidden = false; }
     finally { $("#authSubmit").disabled = false; }
   });
